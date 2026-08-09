@@ -1,0 +1,11 @@
+import { auth } from "@/auth";
+import { NextResponse } from "next/server";
+import { getPatientStats } from "@/lib/demo-data";
+
+export async function GET() {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return NextResponse.json(getPatientStats());
+}

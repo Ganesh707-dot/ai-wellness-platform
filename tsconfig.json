@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["web/*"]
+    }
+  },
+  "include": [
+    "web/**/*.ts",
+    "web/**/*.tsx",
+    "shared/**/*.ts",
+    "shared/**/*.tsx",
+    "ui/**/*.ts",
+    "ui/**/*.tsx",
+    "backend-api/**/*.ts",
+    "backend-api/**/*.tsx",
+    "ai-services/**/*.ts",
+    "ai-services/**/*.tsx",
+    "docs/**/*.ts",
+    "docs/**/*.tsx"
+  ],
+  "exclude": ["**/node_modules", "web/.next", "archives"]
+}

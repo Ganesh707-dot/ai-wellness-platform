@@ -12,6 +12,8 @@ export const STORAGE_KEYS = {
   legacyClinicBoard: "maha_clinic_board_v2",
   bookingIntake: "aw_booking_intake",
   legacyBookingIntake: "maha_booking_intake",
+  aiTranscript: "aw_ai_transcript_v1",
+  legacyAiTranscript: "maha_ai_transcript",
   appointmentCache: (id: string) => `aw_appointment_${id}`,
   legacyAppointmentCache: (id: string) => `maha_apt_${id}`,
   sharedEncountersRedis: "aw:live-encounters:v2",

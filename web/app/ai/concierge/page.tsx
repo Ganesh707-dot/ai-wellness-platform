@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { appendAiTurn } from "@/lib/patient-ai-intake";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -20,7 +21,7 @@ export default function AiConciergePage() {
     {
       role: "assistant",
       content:
-        "Welcome to Maha Symptom Navigator (clinical decision support). Describe symptoms in your words — I run context-intent matching for pathway suggestions and visit prep. This is not a medical diagnosis. How can I assist your intake today?",
+        "Hi — I'm your Symptom Navigator. Describe how you feel in your own words and I'll match clinical intent, suggest safe first-aid steps, and prepare a handoff for your clinician. This is decision support, not a diagnosis. What's going on today?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -38,8 +39,9 @@ export default function AiConciergePage() {
     const trimmed = text.trim();
     if (!trimmed || pending) return;
 
-    const nextHistory = [...messages, { role: "user" as const, content: trimmed }];
-    setMessages(nextHistory);
+    appendAiTurn({ role: "user", content: trimmed });
+    const priorHistory = messages.slice(1);
+    setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
     setInput("");
     setLastConcern(trimmed);
 
@@ -51,10 +53,7 @@ export default function AiConciergePage() {
           body: JSON.stringify({
             message: trimmed,
             role: "patient",
-            history: nextHistory
-              .filter((m) => m.role !== "assistant" || nextHistory.indexOf(m) > 0)
-              .slice(-8)
-              .map(({ role, content }) => ({ role, content })),
+            history: priorHistory.slice(-8),
           }),
         });
         const data = await res.json();
@@ -63,9 +62,17 @@ export default function AiConciergePage() {
           ...prev,
           { role: "assistant", content: data.content },
         ]);
+        appendAiTurn({
+          role: "assistant",
+          content: data.content,
+          intentLabel: data.intent?.label,
+          specialty: data.analytics?.specialty || data.carePath?.specialty,
+          intentScore: data.intent?.score,
+          mode: data.mode,
+        });
         setMeta(
-          `${data.provider} · ${data.model} · ${data.mode}${
-            data.intent?.label ? ` · ${data.intent.label}` : ""
+          `${data.provider} · ${data.mode}${
+            data.intent?.label ? ` · intent: ${data.intent.label}` : ""
           }`
         );
         const type = data.carePath?.consultationType || "PREVENTIVE_CARE";
@@ -85,7 +92,7 @@ export default function AiConciergePage() {
           {
             role: "assistant",
             content:
-              "I hit a temporary network issue contacting live models. Please retry, or use structured triage while I recover.",
+              "I'm having trouble reaching the live model right now, but the clinical intent engine should still respond — please try again in a moment, or use structured triage.",
           },
         ]);
       }

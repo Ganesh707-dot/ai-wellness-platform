@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const schema = z.object({
   message: z.string().min(2).max(2000),
-  role: z.enum(["patient", "doctor"]).optional().default("patient"),
+  role: z.enum(["patient", "doctor", "wellness"]).optional().default("patient"),
   history: z
     .array(
       z.object({
@@ -21,7 +21,17 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { message, history, role } = schema.parse(body);
     const result = await runClinicalAssistantChat(message, history, { role });
-    return NextResponse.json({ success: true, ...result });
+    return NextResponse.json({
+      success: true,
+      content: result.content,
+      provider: result.provider,
+      model: result.model,
+      mode: result.mode,
+      carePath: result.carePath,
+      intent: result.intent,
+      analytics: result.analytics,
+      audience: result.audience,
+    });
   } catch (error: unknown) {
     return NextResponse.json(
       {

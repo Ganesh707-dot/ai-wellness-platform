@@ -1,162 +1,250 @@
 /**
- * Clinical AI runtime — context-intent answers for patient vs doctor roles.
+ * Clinical AI runtime — intent engine + optional free mini LLMs (Groq / Gemini).
+ * Patient: conversational Symptom Navigator. Doctor: intent analytics + CDS.
  */
 
-import { resolveCarePath } from "@/lib/care-path";
-import { searchClinicalIntent, topIntent } from "@/lib/intent-search";
+import { resolveCarePath, type CarePath } from "@/lib/care-path";
+import { searchClinicalIntent, topIntent, type IntentHit } from "@/lib/intent-search";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
-function buildPatientReply(userText: string, historyLen: number) {
-  const hit = topIntent(userText);
-  const path = resolveCarePath(userText);
-  const intents = searchClinicalIntent(userText, 3);
+export type IntentAnalytics = {
+  topIntent: IntentHit | null;
+  allIntents: IntentHit[];
+  carePath: CarePath;
+  specialty: string;
+  concernLabel: string;
+  whyMatched: string[];
+  differentials: string[];
+  redFlags: string[];
+  patientSteps: string[];
+  doctorSteps: string[];
+  isEmergency: boolean;
+};
 
-  if (path.isEmergency || hit?.intent === "emergency") {
-    return `This may be an emergency pattern. Please contact local emergency services / ER now.
+export function buildIntentAnalytics(text: string): IntentAnalytics {
+  const carePath = resolveCarePath(text);
+  const top = topIntent(text);
+  const allIntents = searchClinicalIntent(text, 4);
+  const hit = top || allIntents[0] || null;
 
-${(hit?.patientAnswer || path.firstAid).map((s, i) => `${i + 1}. ${s}`).join("\n")}
-
-This assistant does not replace emergency care.`;
-  }
-
-  const opener = hit
-    ? `${historyLen > 0 ? "Got it" : "Thanks"} — intent match **${hit.label}**${
-        hit.contextHints[0] ? ` (${hit.contextHints[0]})` : ""
-      }.`
-    : `${historyLen > 0 ? "Got it" : "Thanks"} — routed to **${path.concernLabel}**.`;
-
-  const steps = hit?.patientAnswer || path.firstAid;
-  const alts = intents
-    .slice(1, 3)
-    .map((i) => i.label)
-    .join(", ");
-
-  return `${opener}
-
-Why this answer (context search):
-${(hit?.whyMatched || ["general wellness tokens"]).map((w) => `• ${w}`).join("\n")}
-
-Immediate self-care suggestions (clinical decision support — not a diagnosis):
-${steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}
-
-${
-  path.prep.length
-    ? `Before consult:\n${path.prep.map((s, i) => `${i + 1}. ${s}`).join("\n")}`
-    : ""
+  return {
+    topIntent: hit,
+    allIntents,
+    carePath,
+    specialty: hit?.specialty || carePath.specialty,
+    concernLabel: hit?.label || carePath.concernLabel,
+    whyMatched: hit?.whyMatched || ["symptom tokens in free text"],
+    differentials: hit?.differentials || [],
+    redFlags: hit?.redFlags || [carePath.redFlags],
+    patientSteps: hit?.patientAnswer || carePath.firstAid,
+    doctorSteps: hit?.doctorAnswer || [],
+    isEmergency: Boolean(carePath.isEmergency || hit?.intent === "emergency"),
+  };
 }
 
-Specialty handoff: **${hit?.specialty || path.specialty}**.
-Red flags: ${(hit?.redFlags || [path.redFlags]).join("; ")}
-${alts ? `\nAlso considered: ${alts}` : ""}
+function conversationalPatientReply(analytics: IntentAnalytics, historyLen: number) {
+  const { topIntent: hit, carePath, patientSteps, specialty } = analytics;
 
-Next: Book specialty consult (/book-appointment) · Structured triage (/ai/symptom-checker) · Between-visit guidance (/ai/wellness-coach)`;
-}
+  if (analytics.isEmergency) {
+    return `This could be urgent. Please contact local emergency services or go to the ER now — do not wait on chat.
 
-function buildDoctorReply(userText: string) {
-  const hit = topIntent(userText);
-  const path = resolveCarePath(userText);
-  const intents = searchClinicalIntent(userText, 3);
+While help is on the way:
+${patientSteps.map((s, i) => `${i + 1}. ${s}`).join("\n")}
 
-  if (hit?.intent === "emergency" || path.isEmergency) {
-    return `CLINICIAN ALERT — emergency pattern in notes.
-
-${(hit?.doctorAnswer || []).map((s, i) => `${i + 1}. ${s}`).join("\n")}
-
-Divert to EMS/ER. Do not treat as routine telehealth.`;
+This assistant is not emergency care.`;
   }
 
-  return `Doctor intent analytics for: "${userText}"
+  const greet =
+    historyLen > 0
+      ? `I understand — let me help with that.`
+      : `Thanks for telling me.`;
 
-Top match: **${hit?.label || path.concernLabel}** (score ${hit?.score?.toFixed(1) || "—"})
-Specialty frame: ${hit?.specialty || path.specialty}
-Context: ${(hit?.contextHints || ["none detected"]).join("; ")}
+  const pathway = hit
+    ? `From your words, this aligns with **${hit.label}** (${specialty}, confidence ${hit.score.toFixed(1)}).`
+    : `This sounds like **${carePath.concernLabel}** — I'd route you to **${specialty}**.`;
 
-Matched because:
-${(hit?.whyMatched || ["token overlap"]).map((w) => `• ${w}`).join("\n")}
+  const why =
+    analytics.whyMatched.length > 0
+      ? `\n\nWhy I matched this:\n${analytics.whyMatched.slice(0, 4).map((w) => `• ${w}`).join("\n")}`
+      : "";
 
-Clinical actions:
-${(hit?.doctorAnswer || path.firstAid).map((s, i) => `${i + 1}. ${s}`).join("\n")}
+  const steps = `\n\nTry these comfort steps now (clinical decision support — not a diagnosis):\n${patientSteps.map((s, i) => `${i + 1}. ${s}`).join("\n")}`;
+
+  const prep =
+    carePath.prep.length > 0
+      ? `\n\nBefore your video consult, note:\n${carePath.prep.slice(0, 3).map((s, i) => `${i + 1}. ${s}`).join("\n")}`
+      : "";
+
+  const flags = `\n\nSeek urgent care if: ${analytics.redFlags.join("; ")}`;
+
+  const handoff = `\n\nWhen you're ready, book a **${specialty}** clinician — your intake and intent tags travel with the request so your doctor sees full context.`;
+
+  return `${greet} ${pathway}${why}${steps}${prep}${flags}${handoff}`;
+}
+
+function conversationalDoctorReply(analytics: IntentAnalytics, userText: string) {
+  const hit = analytics.topIntent;
+  return `Clinician intent analytics · "${userText.slice(0, 120)}"
+
+Top intent: **${analytics.concernLabel}**${hit ? ` (score ${hit.score.toFixed(1)})` : ""}
+Specialty frame: ${analytics.specialty}
+Context signals: ${(hit?.contextHints || ["none"]).join("; ")}
+
+Match rationale:
+${analytics.whyMatched.map((w) => `• ${w}`).join("\n")}
+
+Suggested clinical actions:
+${(analytics.doctorSteps.length ? analytics.doctorSteps : analytics.patientSteps).map((s, i) => `${i + 1}. ${s}`).join("\n")}
 
 Differentials to confirm:
-${(hit?.differentials || []).map((d) => `• ${d}`).join("\n") || "• Review free text"}
+${analytics.differentials.map((d) => `• ${d}`).join("\n") || "• Review free-text concern on video"}
 
-Red flags: ${(hit?.redFlags || [path.redFlags]).join("; ")}
+Red flags: ${analytics.redFlags.join("; ")}
 
 SOAP draft
 S: ${userText}
-O: Vitals/exam pending
-A: ${hit?.label || path.concernLabel} — verify on consult
-P: Address comfort steps already shared; document; follow-up under ${hit?.specialty || path.specialty}
+O: Vitals/exam pending intake
+A: ${analytics.concernLabel} — verify on consult
+P: Document comfort steps shared; follow-up under ${analytics.specialty}
 
-Related intents: ${intents.map((i) => i.label).join(" · ") || "none"}
-Open patient panel search with this query to pull full dossiers.`;
+Related intents: ${analytics.allIntents.map((i) => i.label).join(" · ") || "none"}`;
+}
+
+function intentSystemPrompt(
+  analytics: IntentAnalytics,
+  audience: "patient" | "doctor"
+) {
+  const base =
+    audience === "doctor"
+      ? "You are Encounter CDS for licensed clinicians. Use the intent analytics below. Never diagnose. Be concise and actionable."
+      : "You are Symptom Navigator — warm, conversational clinical decision support for patients. Never diagnose. Give practical self-care steps and when to escalate. Use the intent context below.";
+
+  return `${base}
+
+INTENT CONTEXT (from clinical engine — trust this):
+- Concern label: ${analytics.concernLabel}
+- Specialty: ${analytics.specialty}
+- Emergency: ${analytics.isEmergency}
+- Why matched: ${analytics.whyMatched.join("; ")}
+- Patient steps: ${analytics.patientSteps.join(" | ")}
+- Red flags: ${analytics.redFlags.join("; ")}
+- Differentials: ${analytics.differentials.join("; ") || "review on consult"}`;
+}
+
+async function tryGroq(messages: ChatMessage[]) {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return null;
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+      messages,
+      temperature: 0.55,
+      max_tokens: 650,
+    }),
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) return null;
+  return {
+    content: String(content).trim(),
+    provider: "groq",
+    model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+  };
+}
+
+async function tryGemini(messages: ChatMessage[]) {
+  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  if (!key) return null;
+
+  const system = messages.find((m) => m.role === "system")?.content || "";
+  const turns = messages.filter((m) => m.role !== "system");
+  const contents = turns.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL || "gemini-1.5-flash"}:generateContent?key=${key}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: system ? { parts: [{ text: system }] } : undefined,
+        contents,
+        generationConfig: { temperature: 0.55, maxOutputTokens: 650 },
+      }),
+      signal: AbortSignal.timeout(12000),
+    }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  const content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!content) return null;
+  return {
+    content: String(content).trim(),
+    provider: "gemini",
+    model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+  };
 }
 
 async function tryLiveLLM(messages: ChatMessage[]) {
-  if (!process.env.GROQ_API_KEY && process.env.AI_LIVE !== "true") {
-    throw new Error("live-llm-disabled");
-  }
-
-  if (process.env.GROQ_API_KEY) {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
-        messages,
-        temperature: 0.5,
-        max_tokens: 550,
-      }),
-      signal: AbortSignal.timeout(7000),
-    });
-    if (!res.ok) throw new Error("groq failed");
-    const data = await res.json();
-    const content = data?.choices?.[0]?.message?.content;
-    if (!content) throw new Error("empty");
-    return {
-      content: String(content).trim(),
-      provider: "groq",
-      model: "llama-3.1-8b-instant",
-    };
-  }
-
-  throw new Error("live-llm-disabled");
+  const groq = await tryGroq(messages);
+  if (groq) return groq;
+  const gemini = await tryGemini(messages);
+  if (gemini) return gemini;
+  return null;
 }
 
 /** Role-aware clinical assistant (navigator for patients, CDS for clinicians). */
 export async function runClinicalAssistantChat(
   userMessage: string,
   history: ChatMessage[] = [],
-  opts?: { role?: "patient" | "doctor" }
+  opts?: { role?: "patient" | "doctor" | "wellness" }
 ) {
   const role = opts?.role || "patient";
   const isDoctor =
     role === "doctor" ||
     /assisting a DOCTOR|clinician|SOAP/i.test(userMessage);
 
-  const path = resolveCarePath(userMessage);
-  const hit = topIntent(userMessage);
+  const analytics = buildIntentAnalytics(userMessage);
+  const hit = analytics.topIntent;
+  const path = analytics.carePath;
+
   const fallback = isDoctor
-    ? buildDoctorReply(userMessage)
-    : buildPatientReply(userMessage, history.length);
+    ? conversationalDoctorReply(analytics, userMessage)
+    : conversationalPatientReply(analytics, history.filter((h) => h.role === "user").length);
+
+  const audience = isDoctor ? "doctor" : "patient";
+  const wellnessExtra =
+    role === "wellness"
+      ? " Focus on sleep, stress, gentle 2-week habits between visits — still not a diagnosis."
+      : "";
 
   const messages: ChatMessage[] = [
     {
       role: "system",
-      content: isDoctor
-        ? "You are Encounter CDS for licensed clinicians. Context/intent analysis, differentials to consider, red flags, SOAP documentation support. Never claim a diagnosis. Never speak as the patient Symptom Navigator."
-        : "You are Symptom Navigator (patient clinical decision support). Context-based self-care suggestions and specialty routing. Never diagnose. Escalate emergencies.",
+      content: intentSystemPrompt(analytics, audience) + wellnessExtra,
     },
-    ...history.slice(-6),
+    ...history
+      .filter((h) => h.role === "user" || h.role === "assistant")
+      .slice(-8)
+      .map((h) => ({
+        role: h.role as "user" | "assistant",
+        content: h.content,
+      })),
     { role: "user", content: userMessage },
   ];
 
-  try {
-    const live = await tryLiveLLM(messages);
+  const live = await tryLiveLLM(messages);
+  if (live) {
     return {
       content: live.content,
       provider: live.provider,
@@ -164,56 +252,60 @@ export async function runClinicalAssistantChat(
       mode: "live-llm" as const,
       carePath: path,
       intent: hit,
-      audience: isDoctor ? "doctor" : "patient",
-    };
-  } catch {
-    return {
-      content: fallback,
-      provider: "clinical-intent-engine",
-      model: isDoctor ? "doctor-intent-v1" : "patient-intent-v1",
-      mode: "clinical-engine" as const,
-      carePath: path,
-      intent: hit,
-      audience: isDoctor ? "doctor" : "patient",
+      analytics,
+      audience,
     };
   }
+
+  return {
+    content: fallback,
+    provider: "clinical-intent-engine",
+    model: isDoctor ? "doctor-intent-v2" : "patient-intent-v2",
+    mode: "clinical-engine" as const,
+    carePath: path,
+    intent: hit,
+    analytics,
+    audience,
+  };
 }
 
 /** @deprecated use runClinicalAssistantChat */
 export const chatWithMahaAI = runClinicalAssistantChat;
 
 export function buildClinicalCopilot(concern: string) {
-  const path = resolveCarePath(concern);
-  const hit = topIntent(concern);
+  const analytics = buildIntentAnalytics(concern);
+  const hit = analytics.topIntent;
   return {
     aiSummary: hit
-      ? `Intent **${hit.label}** for: "${concern}". Context: ${hit.contextHints.join("; ") || "none"}. Specialty ${hit.specialty}.`
-      : `Clinician brief for: "${concern}". Pathway: ${path.concernLabel} → ${path.specialty}.`,
+      ? `Intent **${hit.label}** (score ${hit.score.toFixed(1)}) for: "${concern}". Context: ${hit.contextHints.join("; ") || "none"}. Specialty ${analytics.specialty}.`
+      : `Clinician brief for: "${concern}". Pathway: ${analytics.concernLabel} → ${analytics.specialty}.`,
     aiInsights: hit
       ? [
           ...hit.doctorAnswer.slice(0, 3),
           `Differentials: ${hit.differentials.join("; ")}`,
           `Matched via: ${hit.whyMatched.slice(0, 3).join("; ")}`,
+          `Context: ${hit.contextHints.join("; ") || "general presentation"}`,
         ]
       : [
           `Chief complaint: ${concern}`,
-          `First-aid already shared: ${path.firstAid[0]}`,
-          `Red flags: ${path.redFlags}`,
+          `First-aid shared: ${analytics.patientSteps[0]}`,
+          `Red flags: ${analytics.redFlags.join("; ")}`,
         ],
     suggestedSoap: {
       subjective: concern,
       objective: "Vitals and exam pending video intake",
       assessment: hit
         ? `${hit.label} — confirm differentials on consult`
-        : `Aligned to ${path.concernLabel} — verify on consult`,
+        : `Aligned to ${analytics.concernLabel} — verify on consult`,
       plan: hit
-        ? hit.doctorAnswer[0]
-        : `Document comfort steps; follow-up under ${path.specialty}`,
+        ? hit.doctorAnswer[0] || `Follow-up under ${analytics.specialty}`
+        : `Document comfort steps; follow-up under ${analytics.specialty}`,
     },
-    riskScore: path.isEmergency || hit?.intent === "emergency" ? 0.92 : 0.3,
-    model: "encounter-copilot-v2",
-    specialty: hit?.specialty || path.specialty,
-    firstAidSharedWithPatient: hit?.patientAnswer || path.firstAid,
+    riskScore: analytics.isEmergency ? 0.92 : hit && hit.score >= 8 ? 0.55 : 0.3,
+    model: "encounter-copilot-v3",
+    specialty: analytics.specialty,
+    firstAidSharedWithPatient: analytics.patientSteps,
     intent: hit,
+    analytics,
   };
 }

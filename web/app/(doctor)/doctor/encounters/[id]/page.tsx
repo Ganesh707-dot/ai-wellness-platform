@@ -20,10 +20,13 @@ type Encounter = {
   notes?: string;
   aiSpecialty?: string;
   aiPathway?: string;
+  intentLabel?: string;
+  intentScore?: number;
   aiFirstAid?: string[];
   visitPrep?: string[];
   redFlags?: string;
   doctorBrief?: string;
+  aiInsights?: string[];
   soapDraft?: {
     subjective: string;
     objective: string;
@@ -40,6 +43,12 @@ type Copilot = {
   aiInsights: string[];
   suggestedSoap: Encounter["soapDraft"];
   model: string;
+  intent?: { label: string; score: number; whyMatched?: string[] };
+  analytics?: {
+    whyMatched?: string[];
+    differentials?: string[];
+    allIntents?: { label: string; score: number }[];
+  };
 };
 
 export default function DoctorEncounterPage() {
@@ -179,10 +188,36 @@ export default function DoctorEncounterPage() {
           </div>
 
           {encounter.notes && (
-            <p className="text-sm text-stone-600">
-              <span className="font-medium text-stone-800">Patient notes: </span>
-              {encounter.notes}
-            </p>
+            <div className="rounded-xl bg-amber-50/60 p-3 text-sm text-stone-700 ring-1 ring-amber-100">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                Patient notes + AI transcript
+              </p>
+              <p className="mt-1 whitespace-pre-wrap">{encounter.notes}</p>
+            </div>
+          )}
+
+          {(encounter.intentLabel || encounter.aiPathway) && (
+            <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-4 text-sm">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-900">
+                Intent analytics (from patient AI intake)
+              </p>
+              <p className="mt-2 font-medium text-stone-900">
+                {encounter.intentLabel || encounter.aiPathway}
+                {typeof encounter.intentScore === "number"
+                  ? ` · score ${encounter.intentScore.toFixed(1)}`
+                  : ""}
+              </p>
+              <p className="mt-1 text-stone-600">
+                Specialty: {encounter.aiSpecialty || "—"}
+              </p>
+              {copilot?.analytics?.whyMatched && (
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-stone-600">
+                  {copilot.analytics.whyMatched.slice(0, 4).map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </Card>
 

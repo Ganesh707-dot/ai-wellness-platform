@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { appendAiTurn } from "@/lib/patient-ai-intake";
 
 /**
  * Anonymous guest portal — one-step Symptom Navigator.
@@ -22,6 +23,7 @@ export default function GuestPortalPage() {
 
     startTransition(async () => {
       try {
+        appendAiTurn({ role: "user", content: trimmed });
         const res = await fetch("/api/ai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -34,10 +36,18 @@ export default function GuestPortalPage() {
         const data = await res.json();
         if (!data.success) throw new Error(data.error || "Failed");
         setAnswer(data.content);
+        appendAiTurn({
+          role: "assistant",
+          content: data.content,
+          intentLabel: data.intent?.label,
+          specialty: data.analytics?.specialty,
+          intentScore: data.intent?.score,
+          mode: data.mode,
+        });
         setMeta(
           [
             data.intent?.label,
-            data.carePath?.specialty,
+            data.analytics?.specialty || data.carePath?.specialty,
             data.mode,
           ]
             .filter(Boolean)

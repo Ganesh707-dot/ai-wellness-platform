@@ -19,6 +19,7 @@ import {
   scheduleSchema,
 } from "@/lib/validation-booking";
 import { upsertClinicBoard } from "@/lib/clinic-board";
+import { summarizeTranscriptForDoctor } from "@/lib/patient-ai-intake";
 import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { APP_NAME } from "@/lib/app-brand";
 
@@ -159,7 +160,12 @@ export default function AppointmentWizard() {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await bookAppointmentAction(formData);
+      const aiPacket = summarizeTranscriptForDoctor();
+      const payload = {
+        ...formData,
+        notes: [formData.notes, aiPacket].filter(Boolean).join("\n\n"),
+      };
+      const result = await bookAppointmentAction(payload);
       if (!result.success) {
         setError(result.error || "Booking failed");
         return;

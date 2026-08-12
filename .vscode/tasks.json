@@ -1,0 +1,39 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "web: dev",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "backend: dev",
+      "type": "shell",
+      "command": "npm run start:dev",
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "backend: db push",
+      "type": "shell",
+      "command": "npm run db:push",
+      "options": { "cwd": "${workspaceFolder}/backend" }
+    },
+    {
+      "label": "backend: seed enterprise (10k)",
+      "type": "shell",
+      "command": "npm run db:seed:enterprise",
+      "options": { "cwd": "${workspaceFolder}/backend" }
+    },
+    {
+      "label": "full stack dev",
+      "dependsOn": ["web: dev", "backend: dev"],
+      "dependsOrder": "parallel",
+      "group": { "kind": "build", "isDefault": true }
+    }
+  ]
+}

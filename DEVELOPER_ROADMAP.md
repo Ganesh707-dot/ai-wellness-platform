@@ -6,26 +6,59 @@ See also: `C:\Users\Admin\Projects\DEVELOPER_ROADMAP.md` (master for all 3 proje
 
 - **Site:** https://veridian-clinical.vercel.app
 - **Repo:** https://github.com/Ganesh707-dot/ai-wellness-platform
-- **Deploy folder:** `web/`
+- **Deploy folder:** `web/` (frontend) · `backend/` (NestJS API)
 - **Vercel project:** `ganesh-v/veridian-clinical`
 
-## Bioprint APIs (free, no key)
+## Architecture (enterprise)
+
+```
+Next.js (web/)  ──►  NestJS (backend/)  ──►  Neon PostgreSQL
+     │                      │
+     Auth.js + RBAC         Prisma + 10k seed
+     Bioprint 3D UI         Groq + ClinicalTrials.gov
+```
+
+## NestJS API
+
+| Route | Purpose |
+|-------|---------|
+| `GET /api/v1/health` | DB + Groq status |
+| `GET /api/v1/analytics/enterprise-stats` | 10k dataset metrics |
+| `GET /api/v1/doctors?page=&limit=` | Paginated doctors |
+| `GET /api/v1/appointments` | Paginated appointments |
+| `POST /api/v1/ai/chat` | Groq clinical AI |
+| `GET /api/v1/innovation/live-data` | Bioprint research APIs |
+
+## Bioprint (3D + live APIs)
 
 | Route | Source |
 |-------|--------|
 | `GET /api/innovation/live-data` | ClinicalTrials.gov + PubMed |
-| `POST /api/innovation/lab-jobs` | Server print orchestration |
+| `POST /api/innovation/lab-jobs` | Print orchestration |
+| `web/components/innovation/bioprint-3d-viewer.tsx` | Isometric 3D (mobile + laptop) |
 
 ## Key files
 
-- `web/lib/bioprint-external-api.ts` — external API fetch
-- `web/components/innovation/bioprint-lab-studio.tsx` — UI
-- `web/docs/HANDS_ON_GUIDE.md` — interview scenarios
+- `backend/docs/ADVANCED_NESTJS_STUDY.md` — advanced NestJS study guide
+- `NESTJS_NEON_SETUP.md` — Neon + Vercel deploy
+- `VSCODE_DEV.md` — VS Code tasks + git workflow
+- `web/lib/nest-api-client.ts` — frontend → NestJS client
+- `backend/prisma/seed-enterprise.ts` — 10,000 appointments
 
 ## VS Code
 
 ```bash
-cd web && npm install && npm run dev
+# Full stack (or use Ctrl+Shift+B → full stack dev)
+cd web && npm run dev
+cd backend && npm run start:dev
+```
+
+## Database (Neon)
+
+```bash
+cd backend
+npm run db:push
+npm run db:seed:enterprise
 ```
 
 ## Deploy
@@ -33,4 +66,7 @@ cd web && npm install && npm run dev
 ```bash
 git push origin main
 cd web && npx vercel --prod --yes
+cd backend && npx vercel --prod --yes
 ```
+
+Set `NEST_API_URL` on web Vercel project to backend production URL.

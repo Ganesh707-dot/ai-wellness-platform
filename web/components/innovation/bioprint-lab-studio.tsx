@@ -22,6 +22,7 @@ import {
   BIOPRINT_ENTERPRISE_STATS,
   BIOPRINT_PIPELINE,
 } from "@/lib/bioprint-data";
+import { Bioprint3DViewer } from "@/components/innovation/bioprint-3d-viewer";
 
 type LogEntry = { id: number; time: string; message: string; level: "info" | "ok" | "warn" };
 
@@ -53,76 +54,6 @@ function nowStamp() {
     minute: "2-digit",
     second: "2-digit",
   });
-}
-
-function LayerStack({
-  totalLayers,
-  currentLayer,
-  printing,
-  headX,
-}: {
-  totalLayers: number;
-  currentLayer: number;
-  printing: boolean;
-  headX: number;
-}) {
-  const visible = Math.min(totalLayers, 16);
-  const filled = Math.round((currentLayer / totalLayers) * visible);
-
-  return (
-    <div className="relative flex h-full min-h-[300px] flex-col justify-end p-4">
-      <div className="absolute inset-0 overflow-hidden rounded-2xl">
-        <div
-          className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(94,234,212,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(94,234,212,0.08) 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
-          }}
-        />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_80%,rgba(20,184,166,0.25),transparent_55%)]" />
-      </div>
-
-      <div className="relative mx-auto flex w-full max-w-[280px] flex-col-reverse gap-[3px]">
-        {Array.from({ length: visible }).map((_, i) => {
-          const layerIndex = i + 1;
-          const isFilled = layerIndex <= filled;
-          const isActive = printing && layerIndex === filled;
-          return (
-            <div
-              key={layerIndex}
-              className="relative h-[14px] overflow-hidden rounded-sm transition-all duration-300"
-              style={{
-                opacity: isFilled ? 1 : 0.25,
-                transform: isActive ? "scaleX(1.02)" : "scaleX(1)",
-              }}
-            >
-              <div
-                className={`h-full w-full transition-all duration-500 ${
-                  isFilled
-                    ? "bg-gradient-to-r from-teal-400/90 via-emerald-300/80 to-teal-500/90"
-                    : "bg-teal-950/60 ring-1 ring-teal-700/30"
-                }`}
-              />
-              {isActive && (
-                <div
-                  className="absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_12px_#5eead4]"
-                  style={{ left: `${headX}%` }}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {printing && (
-        <div className="relative mt-4 flex items-center justify-center gap-2 text-[11px] text-teal-100/90">
-          <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-          Depositing layer {Math.min(currentLayer, totalLayers)} / {totalLayers}
-        </div>
-      )}
-    </div>
-  );
 }
 
 function MetricTile({
@@ -158,6 +89,7 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
   const [printing, setPrinting] = useState(false);
   const [layer, setLayer] = useState(0);
   const [headX, setHeadX] = useState(50);
+  const [headY, setHeadY] = useState(35);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [tick, setTick] = useState(0);
   const [liveData, setLiveData] = useState<LiveDataPayload | null>(null);
@@ -217,6 +149,7 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
     setPrinting(false);
     setLayer(0);
     setHeadX(50);
+    setHeadY(35);
     void syncJob("reset", 0);
     pushLog("Print cycle reset — awaiting operator command", "warn");
   }, [pushLog, syncJob]);
@@ -261,6 +194,10 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
         const dir = x > 85 ? -1 : x < 15 ? 1 : Math.random() > 0.5 ? 1 : -1;
         return Math.min(92, Math.max(8, x + dir * (8 + Math.random() * 12)));
       });
+      setHeadY((y) => {
+        const dir = y > 80 ? -1 : y < 20 ? 1 : Math.random() > 0.5 ? 1 : -1;
+        return Math.min(88, Math.max(12, y + dir * (6 + Math.random() * 10)));
+      });
     }, 180);
 
     return () => {
@@ -289,7 +226,7 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
         ["Tissue eng. trials", liveData.stats.tissueEngineeringTrials],
       ]
     : [
-        ["Active trials", BIOPRINT_ENTERPRISE_STATS.activeTrials],
+        ["Clinical records", BIOPRINT_ENTERPRISE_STATS.clinicalRecords.toLocaleString()],
         ["Constructs printed", BIOPRINT_ENTERPRISE_STATS.constructsPrinted.toLocaleString()],
         ["Avg viability", `${BIOPRINT_ENTERPRISE_STATS.avgViability}%`],
         ["Partner labs", BIOPRINT_ENTERPRISE_STATS.partnerLabs],
@@ -300,11 +237,13 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
       <div className="relative min-h-[280px] overflow-hidden rounded-3xl ring-1 ring-white/10">
         <div className="absolute inset-0 bg-[#0a2824]" />
         <div className="relative grid h-full min-h-[280px] grid-rows-[1fr_auto]">
-          <LayerStack
+          <Bioprint3DViewer
             totalLayers={app.layers}
             currentLayer={printing ? layer : Math.min(6, app.layers)}
             printing={printing}
             headX={headX}
+            headY={headY}
+            compact
           />
           <div className="border-t border-white/10 bg-black/20 px-4 py-3">
             <div className="flex items-center justify-between gap-2">
@@ -425,11 +364,12 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
         <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
           {/* Visual + telemetry */}
           <div className="border-b border-white/10 lg:border-b-0 lg:border-r">
-            <LayerStack
+            <Bioprint3DViewer
               totalLayers={app.layers}
               currentLayer={layer}
               printing={printing}
               headX={headX}
+              headY={headY}
             />
 
             <div className="grid grid-cols-2 gap-2 border-t border-white/10 p-4 md:grid-cols-4 md:p-6">

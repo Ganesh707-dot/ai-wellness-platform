@@ -105,7 +105,8 @@ export const BIOPRINT_PIPELINE: PipelineStage[] = [
 
 export const BIOPRINT_ENTERPRISE_STATS = {
   activeTrials: 47,
-  constructsPrinted: 1284,
+  constructsPrinted: 10_284,
+  clinicalRecords: 10_000,
   avgViability: 94.6,
   partnerLabs: 12,
   regulatoryPathways: ["FDA RMAT", "EMA ATMP", "CDSCO cell therapy"],

@@ -25,22 +25,24 @@ Browser (React 19)
     ▼
 Next.js Middleware (edge) ── route → required permission
     │
-    ▼
-Next.js Route Handlers (Node/TS) ── denyUnlessPermission()
+    ├─ Next.js Route Handlers (demo fabric, bioprint, legacy APIs)
     │
-    ├─ CDS engines (intent search, Symptom Navigator, Encounter CDS)
-    ├─ Demo fabric (demo-data + cookie/memory stores)
-    └─ Prisma schema ready for Neon Postgres (future)
+    ▼
+NestJS API (backend/) ── enterprise REST + Prisma
+    │
+    ├─ Neon PostgreSQL (10k+ clinical records via seed-enterprise)
+    ├─ Groq LLM proxy · ClinicalTrials.gov / PubMed
+    └─ Global filters, interceptors, pagination
 ```
 
 ### 2.2 Important clarification (interviews love this)
 
 | Myth | Reality |
 |------|---------|
-| “Backend is Java” | **No Java.** Backend = Next.js Route Handlers in TypeScript |
+| “Backend is Java” | **No Java.** Enterprise API = **NestJS** + **Prisma** on **Neon Postgres**; Next.js handles UI + Auth |
 | “AI diagnoses patients” | **CDS only** — supports clinicians; licensed humans decide |
 | “RBAC = if role === ADMIN” | **Permission matrix** `resource:action` enforced on routes + APIs |
-| “Folders `backend-api/`, `ai-services/` are the app” | Those are **legacy batch kits**. **Runnable app = `web/`** |
+| “Folders `backend-api/`, `ai-services/` are the app” | Those are **legacy batch kits**. **Runnable app = `web/` + `backend/`** |
 
 ### 2.3 Tech stack
 
@@ -50,11 +52,13 @@ Next.js Route Handlers (Node/TS) ── denyUnlessPermission()
 | Auth | Auth.js v5 (Credentials + JWT) | `web/auth.ts`, `web/auth.config.ts` |
 | RBAC | Permission policy + middleware | `web/lib/rbac.ts`, `web/middleware.ts` |
 | IAM | Admin user store (pending → activate) | `web/lib/user-store.ts`, `/admin/users` |
-| CDS / AI | Intent engine + optional Groq | `web/lib/ai-client.ts`, `web/lib/intent-search.ts` |
+| CDS / AI | Intent engine + optional Groq | `web/lib/ai-client.ts`, `backend/src/ai/` |
+| Enterprise API | NestJS 11, DTOs, interceptors | `backend/src/**` |
+| Bioprint 3D | Isometric CSS 3D viewer | `web/components/innovation/bioprint-3d-viewer.tsx` |
 | Booking handoff | Live encounters + cookies | `web/lib/demo-store.ts` |
 | Data (demo) | Generated enterprise mocks | `web/lib/demo-data.ts` |
-| Data (prod path) | Prisma + Postgres | `web/prisma/schema.prisma` |
-| Deploy | Vercel | `web/vercel.json`, root directory = `web` |
+| Data (prod) | Prisma + Neon Postgres | `backend/prisma/`, `seed-enterprise.ts` |
+| Deploy | Vercel | `web/` + `backend/` projects |
 
 ### 2.4 Request lifecycle (auth + RBAC)
 

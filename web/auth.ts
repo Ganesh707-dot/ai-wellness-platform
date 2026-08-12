@@ -53,8 +53,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
 
           const { db } = await import("@/lib/db");
+          const { permissionsForRole } = await import("@/lib/rbac");
           const user = await db.user.findUnique({
             where: { email: parsed.data.email },
+            include: { doctorProfile: true },
           });
           if (!user?.password || !user.isActive) return null;
           const ok = await compare(parsed.data.password, user.password);
@@ -65,6 +67,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: user.name,
             image: user.image,
             role: user.role,
+            isActive: user.isActive,
+            permissions: permissionsForRole(user.role),
+            doctorId: user.doctorProfile?.id,
           };
         } catch {
           return null;

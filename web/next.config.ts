@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const nestApiUrl = process.env.NEST_API_URL?.replace(/\/$/, "");
+
 const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
@@ -13,6 +15,15 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "api.dicebear.com" },
     ],
+  },
+  async rewrites() {
+    if (!nestApiUrl) return [];
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${nestApiUrl}/api/v1/:path*`,
+      },
+    ];
   },
 };
 

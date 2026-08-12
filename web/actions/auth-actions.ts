@@ -58,7 +58,28 @@ export async function registerAction(input: RegisterInput) {
         accessStatus: "pending",
       };
     }
-    return { success: true, message: "Registered" };
+
+    const { dbCreateUser } = await import("@/lib/db-api");
+    const existing = await (await import("@/lib/db")).db.user.findUnique({
+      where: { email: parsed.data.email },
+    });
+    if (existing) {
+      return { success: false, error: "Email already registered" };
+    }
+    await dbCreateUser({
+      name: parsed.data.name,
+      email: parsed.data.email,
+      role: "PATIENT",
+      password: parsed.data.password,
+      isActive: false,
+    });
+    return {
+      success: true,
+      message: `Account created for ${parsed.data.email}. An admin must activate it before you can sign in.`,
+      email: parsed.data.email,
+      isActive: false,
+      accessStatus: "pending",
+    };
   } catch (error: unknown) {
     return {
       success: false,

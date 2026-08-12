@@ -16,6 +16,7 @@ import {
   ROLE_POLICY,
   type AppRole,
 } from "@/lib/rbac";
+import { useDatabaseMode, apiListUsers, apiCreateUser, apiUpdateUser } from "@/lib/api-service";
 
 async function requirePerm(
   permission: "users:read" | "users:write" | "users:suspend"
@@ -37,6 +38,27 @@ async function requirePerm(
 export async function GET() {
   const gate = await requirePerm("users:read");
   if (gate.error) return gate.error;
+
+  if (useDatabaseMode()) {
+    const result = await apiListUsers(1, 100);
+    const users = result.data;
+    return NextResponse.json({
+      users,
+      total: result.meta.total,
+      pendingCount: users.filter((u) => !u.isActive).length,
+      doctorPanels: users
+        .filter((u) => u.doctorId)
+        .map((u) => ({ id: u.doctorId, name: u.name, specialization: u.specialization })),
+      specialties: CLINICIAN_SPECIALTIES,
+      rolePermissionPresets: Object.fromEntries(
+        (Object.keys(ROLE_POLICY) as AppRole[]).map((role) => [
+          role,
+          permissionsForRole(role).map((id) => ({ id, ...PERMISSION_CATALOG[id] })),
+        ])
+      ),
+      dataSource: "neon",
+    });
+  }
 
   const users = await listManagedUsers();
   const doctorPanels = await listAssignableDoctorPanels();
@@ -76,6 +98,27 @@ export async function POST(request: Request) {
 
   try {
     const body = createSchema.parse(await request.json());
+
+    if (useDatabaseMode()) {
+      const user = await apiCreateUser({
+        name: body.name,
+        email: body.email,
+        role: body.role,
+        password: body.password ?? "password123",
+        isActive: false,
+        specialization: body.specialization,
+      });
+      return NextResponse.json({
+        success: true,
+        user,
+        tempPassword: body.password ?? "password123",
+        isActive: false,
+        accessStatus: "pending",
+        message: "User created in Neon — activate before sign-in.",
+        dataSource: "neon",
+      });
+    }
+
     const { user, tempPassword } = await createManagedUser(body);
     const { password: _p, ...safe } = user;
     return NextResponse.json({
@@ -130,6 +173,20 @@ export async function PATCH(request: Request) {
           { status: 400 }
         );
       }
+
+      if (useDatabaseMode()) {
+        const updated = await apiUpdateUser(body.id, {
+          role: body.role,
+          isActive: true,
+        });
+        return NextResponse.json({
+          success: true,
+          user: updated,
+          message: `Activated in Neon. User must sign in again.`,
+          dataSource: "neon",
+        });
+      }
+
       const perms = body.permissions || body.grantedPermissions || [];
       const updated = await activateManagedUser({
         id: body.id,
@@ -167,6 +224,21 @@ export async function PATCH(request: Request) {
     if (patch.isActive === false) {
       patch.accessStatus = patch.accessStatus || "suspended";
       patch.grantedPermissions = [];
+    }
+
+    if (useDatabaseMode()) {
+      const updated = await apiUpdateUser(id, {
+        name: patch.name,
+        role: patch.role,
+        isActive: patch.isActive,
+        password: patch.password,
+      });
+      return NextResponse.json({
+        success: true,
+        user: updated,
+        message: `Updated in Neon.`,
+        dataSource: "neon",
+      });
     }
 
     const updated = await updateManagedUser(id, patch);

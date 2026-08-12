@@ -3,16 +3,16 @@
  * Doctor Clinical AI consumes the same packet on the encounter screen.
  */
 
+import {
+  resolveSpecialtyIntent,
+  type ConsultationType,
+} from "@/lib/specialty-intent";
+
 export type CarePath = {
   specialty: string;
-  consultationType:
-    | "HOMEOPATHY"
-    | "PEDIATRICS"
-    | "FERTILITY"
-    | "WOMENS_WELLNESS"
-    | "EMOTIONAL_WELLNESS"
-    | "FAMILY_WELLNESS"
-    | "PREVENTIVE_CARE";
+  consultationType: ConsultationType;
+  intentConfidence?: number;
+  whyMatched?: string[];
   concernLabel: string;
   firstAid: string[];
   prep: string[];
@@ -41,12 +41,11 @@ type Rule = {
   emergency?: boolean;
 };
 
-const RULES: Rule[] = [
-  {
-    match:
-      /(chest pain|can't breathe|cannot breathe|unconscious|stroke|severe bleeding|suicidal)/i,
-    specialty: "Emergency Care",
-    concernLabel: "possible emergency pattern",
+const PATH_DETAILS: Record<
+  string,
+  Pick<Rule, "firstAid" | "prep" | "redFlags" | "emergency">
+> = {
+  "Emergency Care": {
     firstAid: [
       "Call local emergency services / ER now",
       "Do not wait on chat — this is not emergency care",
@@ -55,6 +54,42 @@ const RULES: Rule[] = [
     prep: [],
     redFlags: "Emergency signs → ER immediately.",
     emergency: true,
+  },
+  "Women's Wellness": {
+    firstAid: [
+      "Rest and hydrate; note bleeding, fever, or severe pain",
+      "Light movement if tolerated; avoid heavy lifting if postpartum",
+      "Track mood, sleep, and feeding if applicable",
+    ],
+    prep: [
+      "Note days since delivery / cycle day",
+      "List current medicines and supplements",
+      "Prepare prior OB/GYN reports if available",
+    ],
+    redFlags:
+      "Heavy bleeding, fainting, chest pain, suicidal thoughts → urgent care.",
+  },
+};
+
+const RULES: Rule[] = [
+  {
+    match:
+      /(chest pain|can't breathe|cannot breathe|unconscious|stroke|severe bleeding|suicidal)/i,
+    specialty: "Emergency Care",
+    concernLabel: "possible emergency pattern",
+    firstAid: PATH_DETAILS["Emergency Care"].firstAid,
+    prep: PATH_DETAILS["Emergency Care"].prep,
+    redFlags: PATH_DETAILS["Emergency Care"].redFlags!,
+    emergency: true,
+  },
+  {
+    match:
+      /(post\s*partum|postpartum|after\s+(child\s*birth|childbirth|delivery|giving birth)|maternal health|breast\s*feed|lochia|health.*(mother|mom|mum).*(birth|delivery))/i,
+    specialty: "Women's Wellness",
+    concernLabel: "postpartum / maternal recovery",
+    firstAid: PATH_DETAILS["Women's Wellness"].firstAid,
+    prep: PATH_DETAILS["Women's Wellness"].prep,
+    redFlags: PATH_DETAILS["Women's Wellness"].redFlags!,
   },
   {
     match:
@@ -108,7 +143,8 @@ const RULES: Rule[] = [
     redFlags: "Wheeze or facial swelling → emergency care.",
   },
   {
-    match: /(child|baby|toddler|pediatric|kids? fever|my son|my daughter)/i,
+    match:
+      /(\bmy\s+(son|daughter|baby|toddler|kid|child)\b|\b(child|baby|toddler|infant)\s+(has|have|with|is|got|feels?)\b|kids?\s+(fever|sick|cough))/i,
     specialty: "Pediatrics",
     concernLabel: "pediatric symptom support",
     firstAid: [
@@ -206,37 +242,91 @@ const RULES: Rule[] = [
   },
 ];
 
+function carePathFromRule(rule: Rule): CarePath {
+  return {
+    specialty: rule.specialty,
+    consultationType: SPECIALTY_TO_TYPE[rule.specialty] || "PREVENTIVE_CARE",
+    concernLabel: rule.concernLabel,
+    firstAid: rule.firstAid,
+    prep: rule.prep,
+    redFlags: rule.redFlags,
+    isEmergency: Boolean(rule.emergency),
+  };
+}
+
+const DEFAULT_PATH: CarePath = {
+  specialty: "Preventive Care",
+  consultationType: "PREVENTIVE_CARE",
+  concernLabel: "general wellness question",
+  firstAid: [
+    "Rest, hydrate, note onset + severity (1–10)",
+    "Avoid new medicine stacks until reviewed",
+    "Seek urgent care if symptoms escalate fast",
+  ],
+  prep: [
+    "Capture onset and intensity",
+    "Note triggers for 48 hours",
+    "Prepare prior reports for consult",
+  ],
+  redFlags: "Emergency symptoms → call local emergency services first.",
+  isEmergency: false,
+};
+
 export function resolveCarePath(text: string): CarePath {
+  const intent = resolveSpecialtyIntent(text);
+  const specialtyLabel = intent.specialty;
+
+  const textMatch = RULES.find((r) => r.match.test(text));
+  const specialtyMatch = RULES.find(
+    (r) =>
+      r.specialty === specialtyLabel ||
+      SPECIALTY_TO_TYPE[r.specialty] === intent.consultationType
+  );
+
+  const matchedRule =
+    intent.confidence >= 0.35
+      ? specialtyMatch || textMatch
+      : textMatch || specialtyMatch;
+
+  if (matchedRule) {
+    const path = carePathFromRule(matchedRule);
+    if (intent.concernLabel && intent.confidence >= 0.35) {
+      path.concernLabel = intent.concernLabel;
+    }
+    path.intentConfidence = intent.confidence;
+    path.whyMatched = intent.whyMatched;
+    path.isEmergency = path.isEmergency || intent.isEmergency;
+    return path;
+  }
+
+  if (intent.confidence >= 0.35) {
+    const details = PATH_DETAILS[specialtyLabel];
+    return {
+      specialty: specialtyLabel,
+      consultationType: intent.consultationType,
+      concernLabel: intent.concernLabel,
+      firstAid: details?.firstAid ?? DEFAULT_PATH.firstAid,
+      prep: details?.prep ?? DEFAULT_PATH.prep,
+      redFlags: details?.redFlags ?? DEFAULT_PATH.redFlags,
+      isEmergency: intent.isEmergency,
+      intentConfidence: intent.confidence,
+      whyMatched: intent.whyMatched,
+    };
+  }
+
   for (const rule of RULES) {
     if (rule.match.test(text)) {
-      return {
-        specialty: rule.specialty,
-        consultationType:
-          SPECIALTY_TO_TYPE[rule.specialty] || "PREVENTIVE_CARE",
-        concernLabel: rule.concernLabel,
-        firstAid: rule.firstAid,
-        prep: rule.prep,
-        redFlags: rule.redFlags,
-        isEmergency: Boolean(rule.emergency),
-      };
+      const path = carePathFromRule(rule);
+      path.intentConfidence = intent.confidence;
+      path.whyMatched = intent.whyMatched;
+      return path;
     }
   }
+
   return {
-    specialty: "Preventive Care",
-    consultationType: "PREVENTIVE_CARE",
-    concernLabel: "general wellness question",
-    firstAid: [
-      "Rest, hydrate, note onset + severity (1–10)",
-      "Avoid new medicine stacks until reviewed",
-      "Seek urgent care if symptoms escalate fast",
-    ],
-    prep: [
-      "Capture onset and intensity",
-      "Note triggers for 48 hours",
-      "Prepare prior reports for consult",
-    ],
-    redFlags: "Emergency symptoms → call local emergency services first.",
-    isEmergency: false,
+    ...DEFAULT_PATH,
+    intentConfidence: intent.confidence,
+    whyMatched: intent.whyMatched,
   };
 }
 

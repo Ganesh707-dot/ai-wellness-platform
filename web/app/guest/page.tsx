@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,15 +15,25 @@ export default function GuestPortalPage() {
   const [answer, setAnswer] = useState("");
   const [meta, setMeta] = useState("");
   const [bookHref, setBookHref] = useState("/book-appointment");
-  const [pending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const run = () => {
+  const run = useCallback(() => {
     const trimmed = input.trim();
-    if (!trimmed || pending) return;
+    if (!trimmed || trimmed.length < 4 || isLoading) return;
 
-    startTransition(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setIsLoading(true);
+    setAnswer("");
+
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    appendAiTurn({ role: "user", content: trimmed });
+
+    void (async () => {
       try {
-        appendAiTurn({ role: "user", content: trimmed });
         const res = await fetch("/api/ai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -32,6 +42,7 @@ export default function GuestPortalPage() {
             role: "patient",
             history: [],
           }),
+          signal: controller.signal,
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error || "Failed");
@@ -40,7 +51,7 @@ export default function GuestPortalPage() {
           role: "assistant",
           content: data.content,
           intentLabel: data.intent?.label,
-          specialty: data.analytics?.specialty,
+          specialty: data.analytics?.specialty || data.carePath?.specialty,
           intentScore: data.intent?.score,
           mode: data.mode,
         });
@@ -48,7 +59,7 @@ export default function GuestPortalPage() {
           [
             data.intent?.label,
             data.analytics?.specialty || data.carePath?.specialty,
-            data.mode,
+            `${data.provider} · ${data.mode}`,
           ]
             .filter(Boolean)
             .join(" · ")
@@ -66,11 +77,14 @@ export default function GuestPortalPage() {
         }
       } catch {
         setAnswer(
-          "Temporary issue running clinical decision support. Please retry, or book a clinician directly."
+          "Temporary issue running clinical decision support. Please retry — the intent engine responds instantly even without a live API key."
         );
+      } finally {
+        clearTimeout(timeout);
+        setIsLoading(false);
       }
-    });
-  };
+    })();
+  }, [input, isLoading]);
 
   return (
     <div className="relative min-h-[85vh]">
@@ -85,7 +99,7 @@ export default function GuestPortalPage() {
         <p className="mt-3 text-stone-600">
           Describe your concern once. Symptom Navigator returns pathway
           suggestions and visit prep. Clinical decision support only — not a
-          diagnosis. Create an account later for full data history.
+          diagnosis.
         </p>
 
         <div className="mt-8 rounded-3xl border border-stone-200 bg-white/95 p-5 shadow-sm sm:p-7">
@@ -93,8 +107,9 @@ export default function GuestPortalPage() {
             rows={5}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Example: Headache for 2 days after long screen hours — what should I do before booking?"
+            placeholder="Example: Health is not well for mother after child birth — what care pathway fits?"
             className="resize-none bg-[#fbfcfb]"
+            disabled={isLoading}
           />
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[11px] text-stone-500">
@@ -103,17 +118,24 @@ export default function GuestPortalPage() {
             <Button
               type="button"
               onClick={run}
-              disabled={pending || !input.trim()}
+              disabled={isLoading || input.trim().length < 4}
             >
-              {pending ? "Analyzing…" : "Get CDS guidance"}
+              {isLoading ? "Analyzing…" : "Get CDS guidance"}
             </Button>
           </div>
 
-          {meta && (
+          {isLoading && (
+            <div className="mt-4 inline-flex items-center gap-2 text-xs text-stone-500">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-teal-700" />
+              Matching sentence intent…
+            </div>
+          )}
+
+          {meta && !isLoading && (
             <p className="mt-4 text-xs font-medium text-teal-900">{meta}</p>
           )}
 
-          {answer && (
+          {answer && !isLoading && (
             <div className="mt-4 whitespace-pre-wrap rounded-2xl bg-[#f3f7f4] p-4 text-sm leading-relaxed text-stone-800 ring-1 ring-stone-200">
               {answer}
             </div>

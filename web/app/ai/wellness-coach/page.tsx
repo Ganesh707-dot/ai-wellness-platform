@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { appendAiTurn } from "@/lib/patient-ai-intake";
-
-type Msg = { role: "user" | "assistant"; content: string };
+import { useAiChat } from "@/hooks/use-ai-chat";
 
 const STARTERS = [
   "I sleep poorly after 1am and feel stressed at work",
@@ -15,69 +14,42 @@ const STARTERS = [
 ];
 
 export default function WellnessCoachPage() {
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      role: "assistant",
-      content:
-        "Hi — I'm your between-visit wellness coach. Share sleep, stress, or lifestyle goals and I'll suggest gentle habits (not a diagnosis or prescription). What would you like support with?",
-    },
-  ]);
   const [input, setInput] = useState("");
   const [meta, setMeta] = useState("");
-  const [pending, startTransition] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const { messages, send, isLoading, sessionMeta } = useAiChat(
+    "Hi — I'm your between-visit wellness coach. Share sleep, stress, or lifestyle goals and I'll suggest gentle habits (not a diagnosis or prescription). What would you like support with?"
+  );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, pending]);
+  }, [messages, isLoading]);
 
-  const send = (text: string) => {
+  const handleSend = (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || pending) return;
-    appendAiTurn({ role: "user", content: trimmed });
-    const priorHistory = messages.slice(1);
-    setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
+    if (!trimmed || isLoading) return;
     setInput("");
+    appendAiTurn({ role: "user", content: trimmed });
 
-    startTransition(async () => {
-      try {
-        const res = await fetch("/api/ai/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: trimmed,
-            role: "wellness",
-            history: priorHistory.slice(-8),
-          }),
-        });
-        const data = await res.json();
-        if (!data.success) throw new Error(data.error || "Coach failed");
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: data.content },
-        ]);
+    void send(trimmed, {
+      role: "wellness",
+      onMeta: (m) => {
+        setMeta(
+          `${m.provider} · ${m.mode}${
+            m.intentLabel ? ` · ${m.intentLabel}` : ""
+          }${m.specialty ? ` → ${m.specialty}` : ""}`
+        );
+      },
+      onSuccess: (data) => {
         appendAiTurn({
           role: "assistant",
-          content: data.content,
-          intentLabel: data.intent?.label,
-          specialty: data.analytics?.specialty,
-          mode: data.mode,
+          content: String(data.content),
+          intentLabel: (data.intent as { label?: string })?.label,
+          specialty: (data.analytics as { specialty?: string })?.specialty,
+          mode: data.mode as string,
         });
-        setMeta(
-          `${data.provider} · ${data.mode}${
-            data.intent?.label ? ` · ${data.intent.label}` : ""
-          }`
-        );
-      } catch {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content:
-              "I couldn't reach the live coach model — please retry. The intent engine will still guide sleep/stress tips when available.",
-          },
-        ]);
-      }
+      },
     });
   };
 
@@ -106,7 +78,7 @@ export default function WellnessCoachPage() {
         <div className="max-h-[420px] space-y-3 overflow-y-auto px-5 py-4">
           {messages.map((m, i) => (
             <div
-              key={`${m.role}-${i}`}
+              key={`${m.role}-${i}-${m.content.slice(0, 24)}`}
               className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
@@ -120,7 +92,7 @@ export default function WellnessCoachPage() {
               </div>
             </div>
           ))}
-          {pending && (
+          {isLoading && (
             <p className="text-xs text-stone-500">Coach is thinking…</p>
           )}
           <div ref={bottomRef} />
@@ -131,8 +103,9 @@ export default function WellnessCoachPage() {
               <button
                 key={s}
                 type="button"
-                onClick={() => send(s)}
-                className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-700 hover:bg-teal-50"
+                onClick={() => handleSend(s)}
+                disabled={isLoading}
+                className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-700 hover:bg-teal-50 disabled:opacity-50"
               >
                 {s}
               </button>
@@ -141,7 +114,7 @@ export default function WellnessCoachPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              send(input);
+              handleSend(input);
             }}
             className="flex gap-2"
           >
@@ -151,9 +124,10 @@ export default function WellnessCoachPage() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Describe sleep, stress, habits…"
               className="resize-none"
+              disabled={isLoading}
             />
-            <Button type="submit" disabled={pending || !input.trim()}>
-              Send
+            <Button type="submit" disabled={isLoading || !input.trim()}>
+              {isLoading ? "…" : "Send"}
             </Button>
           </form>
         </div>
@@ -163,9 +137,19 @@ export default function WellnessCoachPage() {
         <Link href="/ai/concierge" className="text-teal-800 hover:underline">
           Symptom Navigator →
         </Link>
-        <Link href="/book-appointment" className="text-teal-800 hover:underline">
-          Book clinician follow-up →
-        </Link>
+        {sessionMeta?.consultationType && (
+          <Link
+            href={`/book-appointment?concern=${encodeURIComponent(sessionMeta.conversationConcern || "")}&type=${sessionMeta.consultationType}`}
+            className="text-teal-800 hover:underline"
+          >
+            Book {sessionMeta.specialty} follow-up →
+          </Link>
+        )}
+        {!sessionMeta?.consultationType && (
+          <Link href="/book-appointment" className="text-teal-800 hover:underline">
+            Book clinician follow-up →
+          </Link>
+        )}
       </div>
     </div>
   );

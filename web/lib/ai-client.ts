@@ -22,19 +22,52 @@ export type IntentAnalytics = {
   isEmergency: boolean;
 };
 
-export function buildIntentAnalytics(text: string): IntentAnalytics {
-  const carePath = resolveCarePath(text);
-  const top = topIntent(text);
-  const allIntents = searchClinicalIntent(text, 4);
+/** Merge prior user turns so follow-ups ("for 3 days", "it's my mother") keep specialty context. */
+export function buildConversationIntentText(
+  userMessage: string,
+  history: Array<{ role: "user" | "assistant"; content: string }> = []
+): string {
+  const current = userMessage.trim();
+  const priorUser = history
+    .filter((h) => h.role === "user")
+    .slice(-4)
+    .map((h) => h.content.trim())
+    .filter(Boolean);
+
+  if (!priorUser.length) return current;
+  if (current.length >= 48) return current;
+
+  return [...priorUser, current].join(". ");
+}
+
+export function buildIntentAnalytics(
+  text: string,
+  history: Array<{ role: "user" | "assistant"; content: string }> = []
+): IntentAnalytics {
+  const intentText = buildConversationIntentText(text, history);
+  const carePath = resolveCarePath(intentText);
+  const top = topIntent(intentText);
+  const allIntents = searchClinicalIntent(intentText, 4);
   const hit = top || allIntents[0] || null;
+
+  const specialty =
+    carePath.intentConfidence && carePath.intentConfidence >= 0.35
+      ? carePath.specialty
+      : hit?.specialty || carePath.specialty;
 
   return {
     topIntent: hit,
     allIntents,
     carePath,
-    specialty: hit?.specialty || carePath.specialty,
-    concernLabel: hit?.label || carePath.concernLabel,
-    whyMatched: hit?.whyMatched || ["symptom tokens in free text"],
+    specialty,
+    concernLabel:
+      carePath.intentConfidence && carePath.intentConfidence >= 0.35
+        ? carePath.concernLabel
+        : hit?.label || carePath.concernLabel,
+    whyMatched:
+      carePath.whyMatched?.length
+        ? carePath.whyMatched
+        : hit?.whyMatched || ["symptom context in free text"],
     differentials: hit?.differentials || [],
     redFlags: hit?.redFlags || [carePath.redFlags],
     patientSteps: hit?.patientAnswer || carePath.firstAid,
@@ -203,7 +236,7 @@ async function tryLiveLLM(messages: ChatMessage[]) {
   return null;
 }
 
-/** Role-aware clinical assistant (navigator for patients, CDS for clinicians). */
+/** Fast path: intent engine always returns within one tick; LLM enriches when keys exist. */
 export async function runClinicalAssistantChat(
   userMessage: string,
   history: ChatMessage[] = [],
@@ -214,13 +247,23 @@ export async function runClinicalAssistantChat(
     role === "doctor" ||
     /assisting a DOCTOR|clinician|SOAP/i.test(userMessage);
 
-  const analytics = buildIntentAnalytics(userMessage);
+  const analytics = buildIntentAnalytics(
+    userMessage,
+    history.filter(
+      (h): h is { role: "user" | "assistant"; content: string } =>
+        h.role === "user" || h.role === "assistant"
+    )
+  );
   const hit = analytics.topIntent;
   const path = analytics.carePath;
+  const conversationConcern = buildConversationIntentText(userMessage, history);
 
   const fallback = isDoctor
     ? conversationalDoctorReply(analytics, userMessage)
-    : conversationalPatientReply(analytics, history.filter((h) => h.role === "user").length);
+    : conversationalPatientReply(
+        analytics,
+        history.filter((h) => h.role === "user").length
+      );
 
   const audience = isDoctor ? "doctor" : "patient";
   const wellnessExtra =
@@ -243,7 +286,12 @@ export async function runClinicalAssistantChat(
     { role: "user", content: userMessage },
   ];
 
-  const live = await tryLiveLLM(messages);
+  const livePromise = tryLiveLLM(messages);
+  const live = await Promise.race([
+    livePromise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+  ]);
+
   if (live) {
     return {
       content: live.content,
@@ -254,6 +302,7 @@ export async function runClinicalAssistantChat(
       intent: hit,
       analytics,
       audience,
+      conversationConcern,
     };
   }
 
@@ -266,6 +315,7 @@ export async function runClinicalAssistantChat(
     intent: hit,
     analytics,
     audience,
+    conversationConcern,
   };
 }
 

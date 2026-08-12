@@ -23,6 +23,8 @@ export type ClinicianMatchResult = {
   recommendedDoctorId: string | null;
   summary: string;
   model: string;
+  intentConfidence: number;
+  whyMatched: string[];
 };
 
 function scorePanel(
@@ -70,6 +72,9 @@ export async function matchCliniciansForConcern(opts: {
   const specialty = (opts.specialty ||
     carePath.consultationType) as CarePath["consultationType"];
 
+  const confidence = carePath.intentConfidence ?? 0;
+  const whyMatched = carePath.whyMatched ?? [];
+
   let panels = await listBookableDoctors(specialty, { soft: false });
   let usedSoft = false;
   if (panels.length === 0) {
@@ -96,8 +101,8 @@ export async function matchCliniciansForConcern(opts: {
 
   const summary = top
     ? usedSoft
-      ? `AI mapped “${carePath.concernLabel}” → ${carePath.specialty}. No exact ${specialty.replaceAll("_", " ")} panel yet — suggesting best available: ${top.name}.`
-      : `AI mapped “${carePath.concernLabel}” → ${carePath.specialty}. Best match: ${top.name} (${top.matchScore}% fit).`
+      ? `AI mapped “${carePath.concernLabel}” → ${carePath.specialty} (${Math.round(confidence * 100)}% intent match). No exact ${specialty.replaceAll("_", " ")} panel yet — suggesting best available: ${top.name}.`
+      : `AI mapped “${carePath.concernLabel}” → ${carePath.specialty} (${Math.round(confidence * 100)}% intent match). Best match: ${top.name} (${top.matchScore}% fit).`
     : `AI mapped “${carePath.concernLabel}” → ${carePath.specialty}, but no bookable clinicians are online for that specialty yet. Ask admin to add a panel.`;
 
   return {
@@ -107,6 +112,8 @@ export async function matchCliniciansForConcern(opts: {
     clinicians: limited,
     recommendedDoctorId: top?.id ?? null,
     summary,
-    model: "aw-match-v1",
+    model: "aw-match-v2",
+    intentConfidence: confidence,
+    whyMatched,
   };
 }

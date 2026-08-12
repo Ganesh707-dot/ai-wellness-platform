@@ -1,101 +1,74 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { appendAiTurn } from "@/lib/patient-ai-intake";
-
-type Msg = { role: "user" | "assistant"; content: string };
+import { useAiChat } from "@/hooks/use-ai-chat";
 
 const STARTERS = [
   "Headache — give me instant first aid",
   "Eye pain and swelling — what can I do now?",
   "Seasonal sneezing and itchy eyes for 5 days",
   "My toddler has a mild fever and low appetite",
+  "Health is not well for mother after child birth",
   "I'm stressed and waking at 3am — first aid for sleep?",
 ];
 
 export default function AiConciergePage() {
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      role: "assistant",
-      content:
-        "Hi — I'm your Symptom Navigator. Describe how you feel in your own words and I'll match clinical intent, suggest safe first-aid steps, and prepare a handoff for your clinician. This is decision support, not a diagnosis. What's going on today?",
-    },
-  ]);
   const [input, setInput] = useState("");
   const [meta, setMeta] = useState<string>("");
-  const [lastConcern, setLastConcern] = useState("");
   const [bookHref, setBookHref] = useState("/book-appointment");
-  const [pending, startTransition] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const { messages, send, isLoading, sessionMeta } = useAiChat(
+    "Hi — I'm your Symptom Navigator. Describe how you feel in your own words and I'll match clinical intent, suggest safe first-aid steps, and prepare a handoff for your clinician. This is decision support, not a diagnosis. What's going on today?"
+  );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, pending]);
+  }, [messages, isLoading]);
 
-  const send = (text: string) => {
+  const handleSend = (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || pending) return;
-
-    appendAiTurn({ role: "user", content: trimmed });
-    const priorHistory = messages.slice(1);
-    setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
+    if (!trimmed || isLoading) return;
     setInput("");
-    setLastConcern(trimmed);
+    appendAiTurn({ role: "user", content: trimmed });
 
-    startTransition(async () => {
-      try {
-        const res = await fetch("/api/ai/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: trimmed,
-            role: "patient",
-            history: priorHistory.slice(-8),
-          }),
-        });
-        const data = await res.json();
-        if (!data.success) throw new Error(data.error || "Failed");
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: data.content },
-        ]);
-        appendAiTurn({
-          role: "assistant",
-          content: data.content,
-          intentLabel: data.intent?.label,
-          specialty: data.analytics?.specialty || data.carePath?.specialty,
-          intentScore: data.intent?.score,
-          mode: data.mode,
-        });
+    void send(trimmed, {
+      role: "patient",
+      onMeta: (m) => {
         setMeta(
-          `${data.provider} · ${data.mode}${
-            data.intent?.label ? ` · intent: ${data.intent.label}` : ""
-          }`
+          `${m.provider} · ${m.mode}${
+            m.intentLabel ? ` · intent: ${m.intentLabel}` : ""
+          }${m.specialty ? ` → ${m.specialty}` : ""}`
         );
-        const type = data.carePath?.consultationType || "PREVENTIVE_CARE";
-        const href = `/book-appointment?concern=${encodeURIComponent(trimmed)}&type=${type}`;
+        const concern = m.conversationConcern || trimmed;
+        const type = m.consultationType || "PREVENTIVE_CARE";
+        const href = `/book-appointment?concern=${encodeURIComponent(concern)}&type=${type}`;
         setBookHref(href);
         try {
           sessionStorage.setItem(
             "aw_booking_intake",
-            JSON.stringify({ concern: trimmed, consultationType: type })
+            JSON.stringify({ concern, consultationType: type })
           );
         } catch {
           /* ignore */
         }
-      } catch {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content:
-              "I'm having trouble reaching the live model right now, but the clinical intent engine should still respond — please try again in a moment, or use structured triage.",
-          },
-        ]);
-      }
+      },
+      onSuccess: (data) => {
+        appendAiTurn({
+          role: "assistant",
+          content: String(data.content),
+          intentLabel: (data.intent as { label?: string })?.label,
+          specialty:
+            (data.analytics as { specialty?: string })?.specialty ||
+            (data.carePath as { specialty?: string })?.specialty,
+          intentScore: (data.intent as { score?: number })?.score,
+          mode: data.mode as string,
+        });
+      },
     });
   };
 
@@ -112,8 +85,8 @@ export default function AiConciergePage() {
               Guided clinical intake
             </h1>
             <p className="mt-2 text-sm text-stone-600">
-              Context-intent pathway matching for specialty referral and visit
-              preparation. Assistive only — not a diagnosis or emergency service.
+              Sentence-based intent matching for specialty referral — not naive
+              keyword overlap.
             </p>
           </div>
           <div className="rounded-2xl border border-stone-200 bg-white/70 p-4">
@@ -125,8 +98,9 @@ export default function AiConciergePage() {
                 <button
                   key={s}
                   type="button"
-                  onClick={() => send(s)}
-                  className="w-full rounded-xl border border-stone-200 bg-[#f7faf8] px-3 py-2 text-left text-xs text-stone-700 transition hover:border-teal-700/40 hover:bg-teal-50"
+                  onClick={() => handleSend(s)}
+                  disabled={isLoading}
+                  className="w-full rounded-xl border border-stone-200 bg-[#f7faf8] px-3 py-2 text-left text-xs text-stone-700 transition hover:border-teal-700/40 hover:bg-teal-50 disabled:opacity-50"
                 >
                   {s}
                 </button>
@@ -143,9 +117,9 @@ export default function AiConciergePage() {
             <Link href={bookHref} className="text-teal-800 hover:underline">
               Book clinician →
             </Link>
-            {lastConcern && (
+            {sessionMeta?.conversationConcern && (
               <Button asChild size="sm" className="mt-2 w-full">
-                <Link href={bookHref}>Book with this concern</Link>
+                <Link href={bookHref}>Book with full conversation context</Link>
               </Button>
             )}
           </div>
@@ -169,7 +143,7 @@ export default function AiConciergePage() {
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
             {messages.map((m, i) => (
               <div
-                key={`${m.role}-${i}`}
+                key={`${m.role}-${i}-${m.content.slice(0, 24)}`}
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
@@ -183,7 +157,7 @@ export default function AiConciergePage() {
                 </div>
               </div>
             ))}
-            {pending && (
+            {isLoading && (
               <div className="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-500">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-teal-700" />
                 Analyzing intake…
@@ -196,7 +170,7 @@ export default function AiConciergePage() {
             className="border-t border-stone-100 p-4"
             onSubmit={(e) => {
               e.preventDefault();
-              send(input);
+              handleSend(input);
             }}
           >
             <Textarea
@@ -205,13 +179,14 @@ export default function AiConciergePage() {
               placeholder="Describe symptoms, duration, and what you need help with…"
               rows={3}
               className="resize-none border-stone-200 bg-[#fbfcfb]"
+              disabled={isLoading}
             />
             <div className="mt-3 flex items-center justify-between gap-3">
               <p className="text-[11px] text-stone-500">
                 Emergency symptoms → call local emergency services first.
               </p>
-              <Button type="submit" disabled={pending || !input.trim()}>
-                Send
+              <Button type="submit" disabled={isLoading || !input.trim()}>
+                {isLoading ? "Sending…" : "Send"}
               </Button>
             </div>
           </form>

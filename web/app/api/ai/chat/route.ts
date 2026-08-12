@@ -31,6 +31,7 @@ export async function POST(request: Request) {
       intent: result.intent,
       analytics: result.analytics,
       audience: result.audience,
+      conversationConcern: result.conversationConcern,
     });
   } catch (error: unknown) {
     return NextResponse.json(

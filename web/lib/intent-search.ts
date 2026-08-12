@@ -4,6 +4,12 @@
  * Scores meaning (intent + context), not blind keyword templates.
  */
 
+import {
+  hasMaternalSubjectContext,
+  hasPediatricSubjectContext,
+  normalizeClinicalText,
+} from "@/lib/specialty-intent";
+
 export type IntentHit = {
   id: string;
   label: string;
@@ -248,6 +254,73 @@ const KB: KnowledgeCard[] = [
     redFlags: ["Bloody stool", "Severe dehydration", "Acute abdomen"],
   },
   {
+    id: "postpartum-maternal",
+    label: "Postpartum / maternal recovery",
+    intent: "womens",
+    specialty: "Women's Wellness",
+    tokens: ["postpartum", "maternal", "breastfeed", "lochia", "ppd"],
+    phrases: [
+      "after child birth",
+      "after childbirth",
+      "after delivery",
+      "mother after birth",
+      "health is not well for mother",
+      "postpartum recovery",
+      "baby blues",
+    ],
+    context: [
+      { token: "mother", hint: "maternal subject — not pediatric" },
+      { token: "mom", hint: "maternal subject — not pediatric" },
+      { token: "weak", hint: "postpartum fatigue pattern" },
+      { token: "bleed", hint: "postpartum bleeding screen" },
+    ],
+    patientAnswer: [
+      "Rest, hydrate, and note fever, heavy bleeding, or severe pain",
+      "Accept help with feeding/rest — postpartum recovery takes time",
+      "Track mood; baby blues vs deeper depression are different — both deserve care",
+    ],
+    doctorAnswer: [
+      "Days since delivery, bleeding, fever, mood, feeding, and pain are mandatory",
+      "Screen postpartum depression / anxiety; safety first",
+      "Differentiate normal recovery vs endometritis, mastitis, or mood crisis",
+    ],
+    differentials: [
+      "Normal postpartum recovery",
+      "Postpartum mood disorder",
+      "Mastitis / endometritis (rule-out)",
+    ],
+    redFlags: [
+      "Heavy bleeding soaking pads hourly",
+      "High fever",
+      "Suicidal thoughts",
+      "Chest pain or fainting",
+    ],
+  },
+  {
+    id: "womens-hormonal",
+    label: "Women's / hormonal health",
+    intent: "womens",
+    specialty: "Women's Wellness",
+    tokens: ["period", "pcos", "hormone", "cramps", "pms", "menstrual"],
+    phrases: ["irregular period", "heavy period", "hormone imbalance"],
+    context: [
+      { token: "cycle", hint: "menstrual cycle tracking" },
+      { token: "pregnan", hint: "pregnancy-related concern" },
+    ],
+    patientAnswer: [
+      "Heat pack for cramps if helpful; hydrate",
+      "Track cycle day, flow, and pain score",
+      "Rest if dizzy; avoid unverified hormone stacks",
+    ],
+    doctorAnswer: [
+      "Cycle history, contraceptives, PCOS/thyroid context",
+      "Pregnancy screen when relevant",
+      "Document pain score and functional impact",
+    ],
+    differentials: ["Dysmenorrhea", "PCOS pattern", "Thyroid-related cycle change"],
+    redFlags: ["Pregnancy bleeding", "Fainting", "Soaking pad hourly"],
+  },
+  {
     id: "pediatric",
     label: "Pediatric support",
     intent: "pediatric",
@@ -305,37 +378,58 @@ function tokenize(q: string): string[] {
 
 export function searchClinicalIntent(query: string, limit = 4): IntentHit[] {
   const q = query.toLowerCase();
+  const normalized = normalizeClinicalText(query).toLowerCase();
   const tokens = tokenize(query);
   if (!q.trim()) return [];
+
+  const maternal = hasMaternalSubjectContext(query);
+  const pediatricSubject = hasPediatricSubjectContext(query);
 
   const scored = KB.map((card) => {
     let score = 0;
     const why: string[] = [];
     const hints: string[] = [];
 
-    for (const t of card.tokens) {
-      if (q.includes(t)) {
-        score += t.length > 4 ? 3 : 2;
-        why.push(`symptom token: ${t}`);
+    for (const p of card.phrases) {
+      if (q.includes(p) || normalized.includes(p)) {
+        score += 6;
+        why.push(`phrase: "${p}"`);
       }
     }
-    for (const p of card.phrases) {
-      if (q.includes(p)) {
-        score += 4;
-        why.push(`phrase: "${p}"`);
+    for (const t of card.tokens) {
+      const inPhrase = card.phrases.some((p) => p.includes(t));
+      if (inPhrase) continue;
+      if (normalized.includes(t) || q.includes(t)) {
+        if (card.intent === "pediatric" && t === "child" && maternal) {
+          score -= 8;
+          why.push("blocked: maternal context overrides 'child' token");
+          continue;
+        }
+        score += t.length > 4 ? 2.5 : 1.5;
+        why.push(`symptom token: ${t}`);
       }
     }
     for (const tok of tokens) {
       if (card.tokens.some((ct) => ct.includes(tok) || tok.includes(ct))) {
-        score += 1;
+        if (card.intent === "pediatric" && tok === "child" && maternal) continue;
+        score += 0.5;
       }
     }
     for (const c of card.context) {
-      if (q.includes(c.token)) {
-        score += 2;
+      if (q.includes(c.token) || normalized.includes(c.token)) {
+        score += 2.5;
         hints.push(c.hint);
         why.push(`context: ${c.hint}`);
       }
+    }
+
+    if (card.intent === "womens" && maternal) {
+      score += 8;
+      why.push("maternal / postpartum sentence context");
+    }
+    if (card.intent === "pediatric" && !pediatricSubject) {
+      score = Math.max(0, score - 10);
+      if (score > 0) why.push("no pediatric subject in sentence");
     }
     if (/(first\s*aid|instant|what should i do|relieve|stop)/i.test(q)) {
       score += card.intent === "emergency" ? 1 : 1.5;

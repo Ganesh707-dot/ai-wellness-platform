@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -37,7 +37,7 @@ export default function DoctorCopilotPage() {
   const [matchedPatients, setMatchedPatients] = useState<
     Array<{ id: string; name: string; lastConcern?: string }>
   >([]);
-  const [pending, startTransition] = useTransition();
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,31 +53,37 @@ export default function DoctorCopilotPage() {
   }, [status]);
 
   const runAssist = () => {
-    startTransition(async () => {
-      const [chatRes, searchRes, copilotRes] = await Promise.all([
-        fetch("/api/ai/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: notes, role: "doctor", history: [] }),
-        }),
-        fetch("/api/doctor/ai-search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: notes }),
-        }),
-        fetch("/api/ai/consultation-copilot", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ concern: notes }),
-        }),
-      ]);
-      const chat = await chatRes.json();
-      const search = await searchRes.json();
-      const c = await copilotRes.json();
-      setDraft(chat.content || "Unable to draft.");
-      setCopilot(c.result || null);
-      setMatchedPatients(search.matchedPatients || []);
-    });
+    if (isAnalyzing || !notes.trim()) return;
+    setIsAnalyzing(true);
+    void (async () => {
+      try {
+        const [chatRes, searchRes, copilotRes] = await Promise.all([
+          fetch("/api/ai/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: notes, role: "doctor", history: [] }),
+          }),
+          fetch("/api/doctor/ai-search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: notes }),
+          }),
+          fetch("/api/ai/consultation-copilot", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ concern: notes }),
+          }),
+        ]);
+        const chat = await chatRes.json();
+        const search = await searchRes.json();
+        const c = await copilotRes.json();
+        setDraft(chat.content || "Unable to draft.");
+        setCopilot(c.result || null);
+        setMatchedPatients(search.matchedPatients || []);
+      } finally {
+        setIsAnalyzing(false);
+      }
+    })();
   };
 
   if (status === "loading" || loading) {
@@ -107,8 +113,8 @@ export default function DoctorCopilotPage() {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
-          <Button onClick={runAssist} disabled={pending}>
-            {pending ? "Analyzing…" : "Run doctor intent + analytics"}
+          <Button onClick={runAssist} disabled={isAnalyzing || !notes.trim()}>
+            {isAnalyzing ? "Analyzing…" : "Run doctor intent + analytics"}
           </Button>
           {draft && (
             <div className="whitespace-pre-wrap rounded-xl bg-[#f3f7f4] p-4 text-sm text-stone-800 ring-1 ring-stone-200">

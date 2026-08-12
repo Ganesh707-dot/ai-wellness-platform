@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { useDebouncedCareMatch } from "@/hooks/use-debounced-care-match";
 import type { BookingFormData } from "./appointment-wizard";
 
 const TYPES = [
@@ -24,6 +25,8 @@ export type AiMatchHint = {
   recommendedName?: string;
   firstAid?: string[];
   isEmergency?: boolean;
+  confidence?: number;
+  whyMatched?: string[];
 };
 
 interface StepConcernProps {
@@ -39,64 +42,32 @@ export default function StepConcern({
   onAiMatch,
   aiMatch,
 }: StepConcernProps) {
-  const [matching, setMatching] = useState(false);
-  const lastConcern = useRef("");
   const userLockedSpecialty = useRef(false);
-  const onAiMatchRef = useRef(onAiMatch);
-  const onChangeRef = useRef(onChange);
-  onAiMatchRef.current = onAiMatch;
-  onChangeRef.current = onChange;
+  const lastAutoSpecialty = useRef<string | null>(null);
+  const { matching, hint, error } = useDebouncedCareMatch(data.concern);
 
   useEffect(() => {
-    const concern = data.concern.trim();
-    if (concern.length < 8) {
-      onAiMatchRef.current?.(null);
+    onAiMatch?.(hint);
+  }, [hint, onAiMatch]);
+
+  useEffect(() => {
+    if (
+      !hint?.specialty ||
+      userLockedSpecialty.current ||
+      (hint.confidence != null && hint.confidence < 0.35)
+    ) {
       return;
     }
-    if (concern === lastConcern.current) return;
+    if (
+      hint.specialty !== data.consultationType &&
+      hint.specialty !== lastAutoSpecialty.current
+    ) {
+      lastAutoSpecialty.current = hint.specialty;
+      onChange("consultationType", hint.specialty);
+    }
+  }, [hint, data.consultationType, onChange]);
 
-    const t = setTimeout(async () => {
-      setMatching(true);
-      try {
-        const res = await fetch("/api/ai/match-clinician", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ concern, limit: 6 }),
-        });
-        const json = await res.json();
-        if (!json.success) {
-          onAiMatchRef.current?.(null);
-          return;
-        }
-        lastConcern.current = concern;
-        const top = json.clinicians?.[0];
-        const hint: AiMatchHint = {
-          summary: json.summary,
-          specialty: json.specialty,
-          specialtyLabel: json.specialtyLabel,
-          recommendedDoctorId: json.recommendedDoctorId,
-          recommendedName: top?.name,
-          firstAid: json.carePath?.firstAid,
-          isEmergency: json.carePath?.isEmergency,
-        };
-        onAiMatchRef.current?.(hint);
-        // Auto-route specialty unless the patient overrode the chip
-        if (
-          !userLockedSpecialty.current &&
-          json.specialty &&
-          json.specialty !== data.consultationType
-        ) {
-          onChangeRef.current("consultationType", json.specialty);
-        }
-      } catch {
-        onAiMatchRef.current?.(null);
-      } finally {
-        setMatching(false);
-      }
-    }, 450);
-
-    return () => clearTimeout(t);
-  }, [data.concern, data.consultationType]);
+  const displayHint = matching ? null : aiMatch ?? hint;
 
   return (
     <div className="space-y-5">
@@ -105,8 +76,8 @@ export default function StepConcern({
           Care need
         </h2>
         <p className="mt-1 text-sm text-stone-600">
-          Describe your concern — AI maps it to a specialty and ranks clinicians
-          in that panel (including doctors you add in Admin).
+          Describe your concern in a full sentence — AI maps intent to specialty
+          (not single keywords like “child” in “child birth”).
         </p>
       </div>
 
@@ -117,30 +88,41 @@ export default function StepConcern({
           value={data.concern}
           onChange={(e) => onChange("concern", e.target.value)}
           className="mt-1"
-          placeholder="e.g. Seasonal allergies with sleep disruption"
+          placeholder="e.g. Health is not well for mother after child birth"
         />
+        <p className="mt-1 text-[11px] text-stone-500">
+          Type at least 12 characters — AI preview updates after you pause typing.
+        </p>
       </div>
 
-      {(matching || aiMatch) && (
+      {(matching || displayHint || error) && (
         <div
           className={`rounded-2xl px-4 py-3 text-sm ring-1 ${
-            aiMatch?.isEmergency
+            displayHint?.isEmergency
               ? "bg-red-50 text-red-950 ring-red-200"
               : "bg-[#eef6f2] text-teal-950 ring-teal-900/15"
           }`}
         >
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em]">
-            {matching ? "AI matching…" : "AI care match"}
+            {matching ? "AI analyzing sentence intent…" : "AI care match"}
           </p>
-          {aiMatch && !matching && (
+          {displayHint && !matching && (
             <>
-              <p className="mt-1 font-medium">{aiMatch.summary}</p>
-              {aiMatch.firstAid?.[0] && (
+              <p className="mt-1 font-medium">{displayHint.summary}</p>
+              {displayHint.whyMatched?.[0] && (
                 <p className="mt-2 text-xs opacity-90">
-                  First-aid hint: {aiMatch.firstAid[0]}
+                  Why: {displayHint.whyMatched.slice(0, 2).join(" · ")}
+                </p>
+              )}
+              {displayHint.firstAid?.[0] && (
+                <p className="mt-2 text-xs opacity-90">
+                  First-aid hint: {displayHint.firstAid[0]}
                 </p>
               )}
             </>
+          )}
+          {error && !matching && (
+            <p className="mt-1 text-xs text-red-800">{error}</p>
           )}
         </div>
       )}
@@ -155,7 +137,7 @@ export default function StepConcern({
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {TYPES.map((t) => {
             const active = data.consultationType === t.value;
-            const aiPick = aiMatch?.specialty === t.value;
+            const aiPick = displayHint?.specialty === t.value;
             return (
               <button
                 key={t.value}

@@ -4,10 +4,10 @@ See also: `C:\Users\Admin\Projects\DEVELOPER_ROADMAP.md` (master for all 3 proje
 
 ## Live
 
-- **Site:** https://maha-ai-wellness.vercel.app
+- **Site:** https://veridian-clinical.vercel.app
 - **Repo:** https://github.com/Ganesh707-dot/ai-wellness-platform
 - **Deploy folder:** `web/`
-- **Vercel project:** `ganesh-v/maha-ai-wellness`
+- **Vercel project:** `ganesh-v/veridian-clinical`
 
 ## Bioprint APIs (free, no key)
 

@@ -6,6 +6,6 @@ export const BRAND_SLUG = "veridian-clinical";
 export const MEETING_CODE_PREFIX = "VCLN";
 export const MODEL_PREFIX = "vcln";
 
-/** Live deployment (Vercel hostname — rename project in dashboard to change). */
-export const LIVE_SITE_URL = "https://maha-ai-wellness.vercel.app";
-export const VERCEL_PROJECT_NAME = "maha-ai-wellness";
+/** Live deployment */
+export const LIVE_SITE_URL = "https://veridian-clinical.vercel.app";
+export const VERCEL_PROJECT_NAME = "veridian-clinical";

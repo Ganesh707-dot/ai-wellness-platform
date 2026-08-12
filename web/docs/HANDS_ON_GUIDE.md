@@ -1,6 +1,6 @@
 # Veridian Clinical — Hands-On Study Guide (15 LPA Full-Stack)
 
-**Live:** https://maha-ai-wellness.vercel.app  
+**Live:** https://veridian-clinical.vercel.app  
 **Repo:** https://github.com/Ganesh707-dot/ai-wellness-platform (deploy folder: `web/`)  
 **Stack:** Next.js 15 · Auth.js v5 · Prisma · Groq AI · Vercel
 
@@ -8,7 +8,7 @@
 
 ## Scenario 1 — Demo live AI to interviewer (5 min)
 
-1. Open https://maha-ai-wellness.vercel.app/api/ai/status → confirm `"liveLlm": true`
+1. Open https://veridian-clinical.vercel.app/api/ai/status → confirm `"liveLlm": true`
 2. Guest intake: `/guest` → type *"health is not well for mother after child birth"*
 3. Expect **Women's Wellness** (not Pediatrics)
 4. Open `/ai/concierge` → multi-turn chat → **Book with full conversation context**
@@ -27,7 +27,7 @@ git add .
 git commit -m "feat: describe change"
 git push origin main
 # OR manual:
-npx vercel link --project maha-ai-wellness
+npx vercel link --project veridian-clinical
 npx vercel --prod --yes
 ```
 
@@ -102,7 +102,7 @@ npx vercel --prod --yes
 
 | Project | Live | Stack |
 |---------|------|-------|
-| **Veridian Clinical** | maha-ai-wellness.vercel.app | Next.js + Groq |
+| **Veridian Clinical** | veridian-clinical.vercel.app | Next.js + Groq |
 | **Career Cockpit** | careerpilot-ai-omega-khaki.vercel.app | Next.js + FastAPI + Groq |
 | **IBS AirBook** | airbook-glvv.onrender.com | Angular + Spring Boot |
 

@@ -2,7 +2,7 @@
 
 Enterprise telehealth platform with conversational AI, RBAC, and clinician encounter handoff.
 
-**Live:** https://maha-ai-wellness.vercel.app  
+**Live:** https://veridian-clinical.vercel.app  
 **Product name:** Veridian Clinical
 
 ## Stack

@@ -1,6 +1,6 @@
 # Veridian Clinical — Enterprise Technical Guide + User Manual
 
-**Live demo:** https://maha-ai-wellness.vercel.app  
+**Live demo:** https://veridian-clinical.vercel.app  
 **Deploy root:** `web/` (Next.js App Router)  
 **Purpose of this doc:** Architecture reference, RBAC how-to, end-user manual, and 15 LPA interview talking points (you can paste sections into ChatGPT for practice).
 
@@ -165,7 +165,7 @@ These bypass pending so recruiters can demo instantly.
 
 ### 4.1 Live URL
 
-https://maha-ai-wellness.vercel.app
+https://veridian-clinical.vercel.app
 
 Password for all seed users: **`password123`**
 

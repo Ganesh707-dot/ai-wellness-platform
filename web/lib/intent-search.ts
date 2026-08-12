@@ -204,6 +204,46 @@ const KB: KnowledgeCard[] = [
     redFlags: ["Suicidal thoughts", "Inability to stay safe"],
   },
   {
+    id: "weight-wellness",
+    label: "Weight / metabolic wellness",
+    intent: "general",
+    specialty: "Preventive Care",
+    tokens: ["overweight", "obesity", "weight gain", "weight loss", "bmi", "metabolic"],
+    phrases: [
+      "over body weight",
+      "over weight",
+      "body weight",
+      "lose weight",
+      "gain weight",
+      "belly fat",
+    ],
+    context: [
+      { token: "diet", hint: "nutrition / lifestyle focus" },
+      { token: "exercise", hint: "activity planning" },
+      { token: "diabetes", hint: "metabolic screening context" },
+    ],
+    patientAnswer: [
+      "Focus on sustainable habits — balanced meals, regular movement, sleep",
+      "Avoid crash diets or unverified supplement stacks",
+      "Track weight weekly (same time of day) rather than daily swings",
+    ],
+    doctorAnswer: [
+      "BMI trend, comorbidities, meds, and prior dietitian/endocrine workup",
+      "Screen for thyroid, PCOS, or mood-related eating when relevant",
+      "Set realistic 8–12 week goals with measurable lifestyle markers",
+    ],
+    differentials: [
+      "Lifestyle-related weight change",
+      "Thyroid / metabolic contribution",
+      "Medication-associated weight change",
+    ],
+    redFlags: [
+      "Rapid unexplained weight loss",
+      "Chest pain on exertion",
+      "Suicidal thoughts tied to body image",
+    ],
+  },
+  {
     id: "fever",
     label: "Fever / viral-type illness",
     intent: "fever",
@@ -410,6 +450,12 @@ export function searchClinicalIntent(query: string, limit = 4): IntentHit[] {
       }
     }
     for (const tok of tokens) {
+      if (card.intent === "fever" && tok === "body" && !/\b(body ache|bodyache|aches)\b/i.test(q)) {
+        continue;
+      }
+      if (card.intent === "fever" && /weight|overweight|obese|bmi/i.test(q)) {
+        continue;
+      }
       if (card.tokens.some((ct) => ct.includes(tok) || tok.includes(ct))) {
         if (card.intent === "pediatric" && tok === "child" && maternal) continue;
         score += 0.5;

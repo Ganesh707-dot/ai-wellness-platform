@@ -178,6 +178,17 @@ const RULES: IntentRule[] = [
     weight: 6,
   },
   {
+    id: "weight-wellness",
+    consultationType: "PREVENTIVE_CARE",
+    concernLabel: "weight / metabolic wellness",
+    phrases: [
+      /over\s*weight|overweight|obese|obesity|body\s*weight|weight\s*gain|weight\s*loss|bmi|belly\s*fat|fatty/i,
+      /want to lose weight|gain weight|metabolic health/i,
+    ],
+    tokens: [/weight management|slimming|diet plan/i],
+    weight: 10,
+  },
+  {
     id: "fever-adult",
     consultationType: "FAMILY_WELLNESS",
     concernLabel: "fever / flu-like illness",
@@ -218,6 +229,10 @@ function scoreRule(rule: IntentRule, raw: string): { score: number; why: string[
   if (rule.id === "postpartum-maternal" && hasMaternalSubjectContext(raw)) {
     score += 6;
     why.push("maternal subject + postpartum context");
+  }
+
+  if (rule.id === "fever-adult" && /weight|overweight|obese|bmi/i.test(raw)) {
+    return { score: 0, why: [] };
   }
 
   if (rule.weight) score += Math.min(rule.weight, score > 0 ? 4 : 0);

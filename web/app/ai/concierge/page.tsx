@@ -44,7 +44,11 @@ export default function AiConciergePage() {
         setMeta(
           `${m.provider} · ${m.mode}${
             m.intentLabel ? ` · intent: ${m.intentLabel}` : ""
-          }${m.specialty ? ` → ${m.specialty}` : ""}`
+          }${m.specialty ? ` → ${m.specialty}` : ""}${
+            m.mode === "clinical-engine"
+              ? " · add GROQ_API_KEY on Vercel for live LLM"
+              : ""
+          }`
         );
         const concern = m.conversationConcern || trimmed;
         setConversationConcern(concern);

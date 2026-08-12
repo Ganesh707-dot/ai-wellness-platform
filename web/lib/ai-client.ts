@@ -76,11 +76,16 @@ export function buildIntentAnalytics(
   };
 }
 
-function conversationalPatientReply(analytics: IntentAnalytics, historyLen: number) {
+function conversationalPatientReply(
+  analytics: IntentAnalytics,
+  historyLen: number,
+  userMessage: string
+) {
   const { topIntent: hit, carePath, patientSteps, specialty } = analytics;
+  const snippet = userMessage.trim().slice(0, 120);
 
   if (analytics.isEmergency) {
-    return `This could be urgent. Please contact local emergency services or go to the ER now — do not wait on chat.
+    return `This could be urgent — please contact local emergency services or go to the ER now.
 
 While help is on the way:
 ${patientSteps.map((s, i) => `${i + 1}. ${s}`).join("\n")}
@@ -90,30 +95,25 @@ This assistant is not emergency care.`;
 
   const greet =
     historyLen > 0
-      ? `I understand — let me help with that.`
-      : `Thanks for telling me.`;
+      ? `Got it — building on what you shared about “${snippet}”.`
+      : `Thanks for telling me about “${snippet}”.`;
 
-  const pathway = hit
-    ? `From your words, this aligns with **${hit.label}** (${specialty}, confidence ${hit.score.toFixed(1)}).`
-    : `This sounds like **${carePath.concernLabel}** — I'd route you to **${specialty}**.`;
+  const pathway = hit && hit.score >= 3
+    ? `This sounds like **${hit.label}**, so I'd connect you with **${specialty}** for a video consult.`
+    : `I'd start with **${specialty}** (${carePath.concernLabel}) based on how you described it.`;
 
-  const why =
-    analytics.whyMatched.length > 0
-      ? `\n\nWhy I matched this:\n${analytics.whyMatched.slice(0, 4).map((w) => `• ${w}`).join("\n")}`
-      : "";
-
-  const steps = `\n\nTry these comfort steps now (clinical decision support — not a diagnosis):\n${patientSteps.map((s, i) => `${i + 1}. ${s}`).join("\n")}`;
+  const steps = `\n\nHere's what you can do now (guidance only — not a diagnosis):\n${patientSteps.map((s, i) => `${i + 1}. ${s}`).join("\n")}`;
 
   const prep =
     carePath.prep.length > 0
-      ? `\n\nBefore your video consult, note:\n${carePath.prep.slice(0, 3).map((s, i) => `${i + 1}. ${s}`).join("\n")}`
+      ? `\n\nBefore your visit, jot down:\n${carePath.prep.slice(0, 3).map((s, i) => `${i + 1}. ${s}`).join("\n")}`
       : "";
 
-  const flags = `\n\nSeek urgent care if: ${analytics.redFlags.join("; ")}`;
+  const flags = `\n\nSee urgent care if: ${analytics.redFlags.join("; ")}`;
 
-  const handoff = `\n\nWhen you're ready, book a **${specialty}** clinician — your intake and intent tags travel with the request so your doctor sees full context.`;
+  const handoff = `\n\nWhen you're ready, book a **${specialty}** clinician — your chat and intent tags go with the request.`;
 
-  return `${greet} ${pathway}${why}${steps}${prep}${flags}${handoff}`;
+  return `${greet} ${pathway}${steps}${prep}${flags}${handoff}`;
 }
 
 function conversationalDoctorReply(analytics: IntentAnalytics, userText: string) {
@@ -151,7 +151,7 @@ function intentSystemPrompt(
   const base =
     audience === "doctor"
       ? "You are Encounter CDS for licensed clinicians. Use the intent analytics below. Never diagnose. Be concise and actionable."
-      : "You are Symptom Navigator — warm, conversational clinical decision support for patients. Never diagnose. Give practical self-care steps and when to escalate. Use the intent context below.";
+      : "You are Symptom Navigator — warm, conversational clinical decision support for patients. Reply in the same language the patient uses (English, Hindi, or mixed). Never diagnose. Give practical self-care steps and when to escalate. Sound natural, not like a template.";
 
   return `${base}
 
@@ -165,32 +165,44 @@ INTENT CONTEXT (from clinical engine — trust this):
 - Differentials: ${analytics.differentials.join("; ") || "review on consult"}`;
 }
 
+export function isLiveLlmConfigured() {
+  return Boolean(
+    process.env.GROQ_API_KEY ||
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY
+  );
+}
+
 async function tryGroq(messages: ChatMessage[]) {
   const key = process.env.GROQ_API_KEY;
   if (!key) return null;
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
-      messages,
-      temperature: 0.55,
-      max_tokens: 650,
-    }),
-    signal: AbortSignal.timeout(12000),
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  const content = data?.choices?.[0]?.message?.content;
-  if (!content) return null;
-  return {
-    content: String(content).trim(),
-    provider: "groq",
-    model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
-  };
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+        messages,
+        temperature: 0.65,
+        max_tokens: 700,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) return null;
+    return {
+      content: String(content).trim(),
+      provider: "groq",
+      model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function tryGemini(messages: ChatMessage[]) {
@@ -262,7 +274,8 @@ export async function runClinicalAssistantChat(
     ? conversationalDoctorReply(analytics, userMessage)
     : conversationalPatientReply(
         analytics,
-        history.filter((h) => h.role === "user").length
+        history.filter((h) => h.role === "user").length,
+        userMessage
       );
 
   const audience = isDoctor ? "doctor" : "patient";
@@ -286,11 +299,14 @@ export async function runClinicalAssistantChat(
     { role: "user", content: userMessage },
   ];
 
+  const llmTimeout = isLiveLlmConfigured() ? 14000 : 0;
   const livePromise = tryLiveLLM(messages);
-  const live = await Promise.race([
-    livePromise,
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
-  ]);
+  const live = llmTimeout
+    ? await Promise.race([
+        livePromise,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), llmTimeout)),
+      ])
+    : await livePromise;
 
   if (live) {
     return {

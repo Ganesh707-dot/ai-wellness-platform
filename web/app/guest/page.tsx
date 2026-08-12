@@ -71,7 +71,9 @@ export default function GuestPortalPage() {
           [
             data.intent?.label,
             data.analytics?.specialty || data.carePath?.specialty,
-            `${data.provider} · ${data.mode}`,
+            data.mode === "live-llm"
+              ? `Live AI · ${data.provider}`
+              : "Guided intake (add Groq key on Vercel for live LLM)",
           ]
             .filter(Boolean)
             .join(" · ")

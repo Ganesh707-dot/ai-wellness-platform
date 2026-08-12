@@ -177,6 +177,22 @@ const RULES: Rule[] = [
     redFlags: "Blood in stool, severe dehydration, sudden severe pain → ER.",
   },
   {
+    match: /(over\s*weight|overweight|obese|obesity|body\s*weight|weight\s*gain|weight\s*loss|bmi|belly\s*fat)/i,
+    specialty: "Preventive Care",
+    concernLabel: "weight / metabolic wellness",
+    firstAid: [
+      "Focus on balanced meals and regular movement you can sustain",
+      "Avoid crash diets or unverified supplement stacks",
+      "Track weight weekly at the same time of day",
+    ],
+    prep: [
+      "Note current weight trend and goal",
+      "List medicines and prior dietitian/endocrine visits",
+      "Prepare questions about safe pace of change",
+    ],
+    redFlags: "Rapid unexplained weight loss, chest pain on exertion → urgent care.",
+  },
+  {
     match: /(fever|temperature|chills|body ache|flu like|viral)/i,
     specialty: "Family Wellness",
     concernLabel: "fever / flu-like illness",

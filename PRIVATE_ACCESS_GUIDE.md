@@ -1,14 +1,40 @@
-# Private repos + password-protected live sites (in-repo copy)
+# Private repos + open live sites
 
-**Product:** Veridian Clinical  
-See master guide: `C:\Users\Admin\Projects\PRIVATE_ACCESS_GUIDE.md`
+**Product:** Veridian Clinical
 
-## Quick setup
+## What is protected vs public
 
-1. Vercel → **veridian-clinical** → Environment Variables → add `SITE_ACCESS_PASSWORD`  
-   https://vercel.com/ganesh-v/veridian-clinical/settings/environment-variables
-2. Redeploy: `cd web && npx vercel --prod --yes`
-3. Share live URL + password privately; keep GitHub repo **private**
-4. Invite collaborators: https://github.com/Ganesh707-dot/ai-wellness-platform/settings/access
+| Layer | Protected? | How |
+|-------|------------|-----|
+| **GitHub code** | Yes | Private repo + invite collaborators only |
+| **Groq / auth secrets** | Yes | Vercel env vars only — never in git |
+| **Live site (mobile, recruiters)** | **Open** | No site password gate |
+| **App login (demo RBAC)** | Yes | `doctor@test.com` / `password123` for portals |
 
-Unlock: https://veridian-clinical.vercel.app/site-access
+## GitHub — invite code access only
+
+https://github.com/Ganesh707-dot/ai-wellness-platform/settings/access
+
+## Live URL (share freely)
+
+https://veridian-clinical.vercel.app
+
+## Vercel env (secrets only — not site lock)
+
+https://vercel.com/ganesh-v/veridian-clinical/settings/environment-variables
+
+- `GROQ_API_KEY`, `AUTH_SECRET`, `NEXTAUTH_URL` = `https://veridian-clinical.vercel.app`
+- **Do not set** `SITE_ACCESS_PASSWORD` (disables public access)
+
+## If mobile still blocked
+
+Turn off **Vercel Deployment Protection** (SSO):
+
+https://vercel.com/ganesh-v/veridian-clinical/settings/deployment-protection
+
+Set to **None** or disable **Vercel Authentication**.
+
+CLI:
+```bash
+npx vercel project protection disable veridian-clinical --sso
+```

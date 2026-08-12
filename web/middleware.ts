@@ -11,6 +11,7 @@ import {
   isSiteLockEnabled,
   isValidSiteAccessCookie,
 } from "@/lib/site-access";
+import { LEGACY_SITE_HOSTS, LIVE_SITE_URL } from "@/lib/app-brand";
 
 const { auth } = NextAuth(authConfig);
 
@@ -27,6 +28,12 @@ function siteLockExempt(pathname: string): boolean {
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
+
+  const host = req.headers.get("host")?.toLowerCase().replace(/:\d+$/, "");
+  if (host && (LEGACY_SITE_HOSTS as readonly string[]).includes(host)) {
+    const dest = new URL(`${pathname}${req.nextUrl.search}`, LIVE_SITE_URL);
+    return NextResponse.redirect(dest, 308);
+  }
 
   if (isSiteLockEnabled() && !siteLockExempt(pathname)) {
     const cookie = req.cookies.get(COOKIE_NAME)?.value;

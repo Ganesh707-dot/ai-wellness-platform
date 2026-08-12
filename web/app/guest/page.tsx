@@ -4,13 +4,20 @@ import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { appendAiTurn } from "@/lib/patient-ai-intake";
+import {
+  appendAiTurn,
+  setConversationConcern,
+  syncAiIntakeToServer,
+  getDeviceId,
+} from "@/lib/patient-ai-intake";
+import { useAiIntakeSync } from "@/hooks/use-ai-intake-sync";
 
 /**
  * Anonymous guest portal — one-step Symptom Navigator.
  * No login required. Public CDS intake → optional book / register.
  */
 export default function GuestPortalPage() {
+  useAiIntakeSync();
   const [input, setInput] = useState("");
   const [answer, setAnswer] = useState("");
   const [meta, setMeta] = useState("");
@@ -47,12 +54,17 @@ export default function GuestPortalPage() {
         const data = await res.json();
         if (!data.success) throw new Error(data.error || "Failed");
         setAnswer(data.content);
+        setConversationConcern(
+          data.conversationConcern || trimmed
+        );
+        await syncAiIntakeToServer(getDeviceId());
         appendAiTurn({
           role: "assistant",
           content: data.content,
           intentLabel: data.intent?.label,
           specialty: data.analytics?.specialty || data.carePath?.specialty,
           intentScore: data.intent?.score,
+          whyMatched: data.analytics?.whyMatched,
           mode: data.mode,
         });
         setMeta(

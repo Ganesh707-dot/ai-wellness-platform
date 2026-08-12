@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { appendAiTurn } from "@/lib/patient-ai-intake";
+import { appendAiTurn, setConversationConcern } from "@/lib/patient-ai-intake";
 import { useAiChat } from "@/hooks/use-ai-chat";
+import { useAiIntakeSync } from "@/hooks/use-ai-intake-sync";
 
 const STARTERS = [
   "I sleep poorly after 1am and feel stressed at work",
@@ -14,6 +15,7 @@ const STARTERS = [
 ];
 
 export default function WellnessCoachPage() {
+  useAiIntakeSync();
   const [input, setInput] = useState("");
   const [meta, setMeta] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -35,6 +37,7 @@ export default function WellnessCoachPage() {
     void send(trimmed, {
       role: "wellness",
       onMeta: (m) => {
+        if (m.conversationConcern) setConversationConcern(m.conversationConcern);
         setMeta(
           `${m.provider} · ${m.mode}${
             m.intentLabel ? ` · ${m.intentLabel}` : ""
@@ -47,6 +50,8 @@ export default function WellnessCoachPage() {
           content: String(data.content),
           intentLabel: (data.intent as { label?: string })?.label,
           specialty: (data.analytics as { specialty?: string })?.specialty,
+          intentScore: (data.intent as { score?: number })?.score,
+          whyMatched: (data.analytics as { whyMatched?: string[] })?.whyMatched,
           mode: data.mode as string,
         });
       },

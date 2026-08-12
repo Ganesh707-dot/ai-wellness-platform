@@ -18,4 +18,5 @@ export const STORAGE_KEYS = {
   legacyAppointmentCache: (id: string) => `maha_apt_${id}`,
   sharedEncountersRedis: "aw:live-encounters:v2",
   sharedPanelsRedis: "aw:doctor-panels:v1",
+  aiIntakeRedisPrefix: "aw:ai-intake:v1",
 } as const;

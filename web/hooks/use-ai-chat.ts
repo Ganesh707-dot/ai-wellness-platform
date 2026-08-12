@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { setConversationConcern } from "@/lib/patient-ai-intake";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -92,6 +93,7 @@ export function useAiChat(initialAssistant: string) {
           trimmed,
       };
       setSessionMeta(meta);
+      if (meta.conversationConcern) setConversationConcern(meta.conversationConcern);
       opts?.onMeta?.(meta);
       opts?.onSuccess?.(data);
     } catch {

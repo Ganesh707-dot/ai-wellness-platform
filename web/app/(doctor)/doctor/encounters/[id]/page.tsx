@@ -33,6 +33,7 @@ type Encounter = {
     assessment: string;
     plan: string;
   };
+  aiIntakeSummary?: string;
   meetingCode?: string;
   videoCallUrl?: string;
   source?: string;
@@ -187,12 +188,19 @@ export default function DoctorEncounterPage() {
             </div>
           </div>
 
-          {encounter.notes && (
+          {(encounter.aiIntakeSummary || encounter.notes) && (
             <div className="rounded-xl bg-amber-50/60 p-3 text-sm text-stone-700 ring-1 ring-amber-100">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900">
-                Patient notes + AI transcript
+                Patient AI conversation + notes
               </p>
-              <p className="mt-1 whitespace-pre-wrap">{encounter.notes}</p>
+              <p className="mt-1 whitespace-pre-wrap">
+                {encounter.aiIntakeSummary || encounter.notes}
+              </p>
+              {encounter.aiIntakeSummary && encounter.notes && (
+                <p className="mt-3 whitespace-pre-wrap border-t border-amber-100 pt-3 text-xs text-stone-600">
+                  Additional notes: {encounter.notes}
+                </p>
+              )}
             </div>
           )}
 

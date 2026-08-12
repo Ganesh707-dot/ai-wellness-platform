@@ -50,6 +50,7 @@ export type LiveEncounter = {
   aiModel: string;
   intentLabel?: string;
   intentScore?: number;
+  aiIntakeSummary?: string;
   priorityBand: PriorityBand;
   riskScore: number;
   soapDraft: {
@@ -85,6 +86,7 @@ type CompactEncounter = {
   dat?: string;
   dby?: string;
   dnote?: string;
+  is?: string; // aiIntakeSummary
 };
 
 const COOKIE = STORAGE_KEYS.liveEncountersCookie;
@@ -160,7 +162,7 @@ function toCompact(e: LiveEncounter): CompactEncounter {
     st: e.status,
     at: e.scheduledAt,
     c: e.concern.slice(0, 280),
-    n: e.notes?.slice(0, 120),
+    n: e.notes?.slice(0, 800),
     mc: e.meetingCode,
     cr: e.createdAt,
     pb: e.priorityBand,
@@ -168,11 +170,12 @@ function toCompact(e: LiveEncounter): CompactEncounter {
     dat: e.decidedAt,
     dby: e.decidedBy,
     dnote: e.decisionNote?.slice(0, 160),
+    is: e.aiIntakeSummary?.slice(0, 4000),
   };
 }
 
 function fromCompact(c: CompactEncounter): LiveEncounter {
-  return hydrateFromConcern({
+  const base = hydrateFromConcern({
     id: c.id,
     patientName: c.pn,
     patientEmail: c.pe,
@@ -195,13 +198,18 @@ function fromCompact(c: CompactEncounter): LiveEncounter {
     decidedBy: c.dby,
     decisionNote: c.dnote,
   });
+  if (c.is) base.aiIntakeSummary = c.is;
+  return base;
 }
 
 export function buildLiveEncounter(
   input: AppointmentBookingInput,
   doctorName = "Dr. Meera Sharma"
 ): LiveEncounter {
-  const corpus = `${input.concern} ${input.notes || ""}`.trim();
+  const chief =
+    input.conversationConcern?.trim() || input.concern.trim();
+  const aiPacket = input.aiIntakeSummary?.trim() || "";
+  const corpus = `${chief} ${input.notes || ""} ${aiPacket}`.trim();
   const path = resolveCarePath(corpus);
   const hit = topIntent(corpus);
   const copilot = buildClinicalCopilot(corpus);
@@ -211,6 +219,8 @@ export function buildLiveEncounter(
     `${input.preferredDate}T${input.preferredTime}:00`
   ).toISOString();
   const emergency = Boolean(path.isEmergency || hit?.intent === "emergency");
+
+  const mergedNotes = [input.notes, aiPacket].filter(Boolean).join("\n\n");
 
   return {
     id,
@@ -222,11 +232,11 @@ export function buildLiveEncounter(
     consultationType: input.consultationType || path.consultationType,
     status: "PENDING_REVIEW",
     scheduledAt,
-    concern: input.concern,
-    notes: input.notes,
+    concern: chief,
+    notes: mergedNotes || undefined,
     meetingCode,
     videoCallUrl: `https://meet.maha-ai.demo/room/${meetingCode}`,
-    chiefComplaint: input.concern,
+    chiefComplaint: chief,
     aiSpecialty: hit?.specialty || path.specialty,
     aiPathway: hit?.label || path.concernLabel,
     aiFirstAid: hit?.patientAnswer || path.firstAid,
@@ -237,6 +247,7 @@ export function buildLiveEncounter(
     aiModel: copilot.model,
     intentLabel: hit?.label,
     intentScore: hit?.score,
+    aiIntakeSummary: aiPacket || undefined,
     priorityBand: priorityFromAi(copilot.riskScore, emergency),
     riskScore: copilot.riskScore,
     soapDraft: copilot.suggestedSoap,

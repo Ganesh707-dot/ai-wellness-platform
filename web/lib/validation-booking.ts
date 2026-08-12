@@ -22,7 +22,9 @@ export const concernSchema = z.object({
     "PREVENTIVE_CARE",
   ]),
   concern: z.string().min(5, "Please describe your concern in detail"),
-  notes: z.string().max(500, "Notes must be less than 500 characters").optional(),
+  notes: z.string().max(8000, "Notes must be less than 8000 characters").optional(),
+  aiIntakeSummary: z.string().max(8000).optional(),
+  conversationConcern: z.string().max(2000).optional(),
 });
 
 // Doctor Selection

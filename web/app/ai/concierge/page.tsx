@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { appendAiTurn } from "@/lib/patient-ai-intake";
+import { appendAiTurn, setConversationConcern } from "@/lib/patient-ai-intake";
 import { useAiChat } from "@/hooks/use-ai-chat";
+import { useAiIntakeSync } from "@/hooks/use-ai-intake-sync";
 
 const STARTERS = [
   "Headache — give me instant first aid",
@@ -17,6 +18,7 @@ const STARTERS = [
 ];
 
 export default function AiConciergePage() {
+  useAiIntakeSync();
   const [input, setInput] = useState("");
   const [meta, setMeta] = useState<string>("");
   const [bookHref, setBookHref] = useState("/book-appointment");
@@ -45,6 +47,7 @@ export default function AiConciergePage() {
           }${m.specialty ? ` → ${m.specialty}` : ""}`
         );
         const concern = m.conversationConcern || trimmed;
+        setConversationConcern(concern);
         const type = m.consultationType || "PREVENTIVE_CARE";
         const href = `/book-appointment?concern=${encodeURIComponent(concern)}&type=${type}`;
         setBookHref(href);
@@ -66,6 +69,7 @@ export default function AiConciergePage() {
             (data.analytics as { specialty?: string })?.specialty ||
             (data.carePath as { specialty?: string })?.specialty,
           intentScore: (data.intent as { score?: number })?.score,
+          whyMatched: (data.analytics as { whyMatched?: string[] })?.whyMatched,
           mode: data.mode as string,
         });
       },

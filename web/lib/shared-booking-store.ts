@@ -28,6 +28,7 @@ export type SharedCompact = {
   dat?: string;
   dby?: string;
   dnote?: string;
+  is?: string;
 };
 
 function redisCreds() {
@@ -53,7 +54,7 @@ export function encounterToSharedCompact(e: LiveEncounter): SharedCompact {
     st: e.status,
     at: e.scheduledAt,
     c: e.concern.slice(0, 280),
-    n: e.notes?.slice(0, 120),
+    n: e.notes?.slice(0, 800),
     mc: e.meetingCode,
     cr: e.createdAt,
     pb: e.priorityBand,
@@ -61,6 +62,7 @@ export function encounterToSharedCompact(e: LiveEncounter): SharedCompact {
     dat: e.decidedAt,
     dby: e.decidedBy,
     dnote: e.decisionNote?.slice(0, 160),
+    is: e.aiIntakeSummary?.slice(0, 4000),
   };
 }
 

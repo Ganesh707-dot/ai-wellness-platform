@@ -19,7 +19,13 @@ import {
   scheduleSchema,
 } from "@/lib/validation-booking";
 import { upsertClinicBoard } from "@/lib/clinic-board";
-import { summarizeTranscriptForDoctor } from "@/lib/patient-ai-intake";
+import { useAiIntakeSync } from "@/hooks/use-ai-intake-sync";
+import {
+  buildBookingIntakePayload,
+  syncAiIntakeToServer,
+  getDeviceId,
+  summarizeTranscriptForDoctor,
+} from "@/lib/patient-ai-intake";
 import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { APP_NAME } from "@/lib/app-brand";
 
@@ -69,6 +75,7 @@ const initialFormData: BookingFormData = {
 };
 
 export default function AppointmentWizard() {
+  useAiIntakeSync();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
@@ -90,16 +97,23 @@ export default function AppointmentWizard() {
     } catch {
       /* ignore */
     }
+    const intake = buildBookingIntakePayload();
     setFormData((prev) => ({
       ...prev,
-      concern: concern || fromStore.concern || prev.concern,
+      concern:
+        concern ||
+        intake.conversationConcern ||
+        fromStore.concern ||
+        prev.concern,
       consultationType:
         type ||
         fromStore.consultationType ||
         prev.consultationType,
       doctorId: doctorId || prev.doctorId,
     }));
-    if (concern || fromStore.concern) setCurrentStep(2);
+    if (concern || fromStore.concern || intake.conversationConcern) {
+      setCurrentStep(2);
+    }
   }, [searchParams]);
 
   const progress = useMemo(
@@ -160,9 +174,14 @@ export default function AppointmentWizard() {
     setIsLoading(true);
     setError(null);
     try {
-      const aiPacket = summarizeTranscriptForDoctor();
+      await syncAiIntakeToServer(getDeviceId());
+      const intake = buildBookingIntakePayload();
+      const aiPacket = intake.aiIntakeSummary || summarizeTranscriptForDoctor();
       const payload = {
         ...formData,
+        concern: intake.conversationConcern || formData.concern,
+        conversationConcern: intake.conversationConcern || formData.concern,
+        aiIntakeSummary: aiPacket,
         notes: [formData.notes, aiPacket].filter(Boolean).join("\n\n"),
       };
       const result = await bookAppointmentAction(payload);

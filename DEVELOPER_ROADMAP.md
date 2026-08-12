@@ -66,7 +66,8 @@ npm run db:seed:enterprise
 ```bash
 git push origin main
 cd web && npx vercel --prod --yes
-cd backend && npx vercel --prod --yes
 ```
 
-Set `NEST_API_URL` on web Vercel project to backend production URL.
+**NestJS runs on the same URL:** `https://veridian-clinical.vercel.app/api/v1/health`
+
+Set `DEMO_MODE=false` and `DATABASE_URL` on Vercel (no separate API project needed).

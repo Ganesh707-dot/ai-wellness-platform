@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+/** External Nest only for local dev on port 4000; production uses web/api/nest.ts */
 const nestApiUrl = process.env.NEST_API_URL?.replace(/\/$/, "");
 
 const nextConfig: NextConfig = {
@@ -7,7 +8,6 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // Portfolio ship path — tighten after recruiter demo URL is live
     ignoreBuildErrors: true,
   },
   images: {
@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
-    if (!nestApiUrl) return [];
+    if (!nestApiUrl || nestApiUrl.includes("localhost:3000")) return [];
     return [
       {
         source: "/api/v1/:path*",

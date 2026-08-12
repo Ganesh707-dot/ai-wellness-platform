@@ -4,7 +4,12 @@
  */
 
 export function getNestApiUrl() {
-  return process.env.NEST_API_URL?.replace(/\/$/, '') ?? '';
+  const explicit = process.env.NEST_API_URL?.replace(/\/$/, '');
+  if (explicit) return explicit;
+  // Same Vercel deployment — Nest served at /api/v1 via web/api/nest.ts
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  if (process.env.NODE_ENV === 'development') return 'http://localhost:3000';
+  return '';
 }
 
 export function useDatabaseMode() {

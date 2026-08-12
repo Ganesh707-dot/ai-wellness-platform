@@ -6,11 +6,43 @@ import {
   requiredPermissionForPath,
   sessionHasPermission,
 } from "@/lib/rbac";
+import {
+  COOKIE_NAME,
+  isSiteLockEnabled,
+  isValidSiteAccessCookie,
+} from "@/lib/site-access";
 
 const { auth } = NextAuth(authConfig);
 
+function siteLockExempt(pathname: string): boolean {
+  return (
+    pathname === "/site-access" ||
+    pathname.startsWith("/api/site-access") ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/_next") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/robots.txt"
+  );
+}
+
 export default auth((req) => {
   const { pathname } = req.nextUrl;
+
+  if (isSiteLockEnabled() && !siteLockExempt(pathname)) {
+    const cookie = req.cookies.get(COOKIE_NAME)?.value;
+    if (!isValidSiteAccessCookie(cookie)) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json(
+          { error: "Site locked — POST /api/site-access first" },
+          { status: 401 }
+        );
+      }
+      const gate = new URL("/site-access", req.nextUrl);
+      gate.searchParams.set("from", pathname);
+      return NextResponse.redirect(gate);
+    }
+  }
+
   const isLoggedIn = !!req.auth?.user;
   const role = (req.auth?.user as { role?: string } | undefined)?.role;
   const granted = (

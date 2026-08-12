@@ -3,6 +3,7 @@ import { PLATFORM_SCALE } from "@/lib/demo-data";
 import { HomeAuthCta } from "@/components/home-auth-cta";
 import { APP_NAME } from "@/lib/app-brand";
 import { Button } from "@/components/ui/button";
+import { BioprintHomePreview } from "@/components/innovation/bioprint-home-preview";
 
 const QUICK_LINKS = [
   {
@@ -126,22 +127,14 @@ export default function HomePage() {
               <Link href="/innovation">Explore bio-innovation →</Link>
             </Button>
           </div>
-          <div className="relative min-h-[280px] overflow-hidden rounded-3xl ring-1 ring-white/10">
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "radial-gradient(circle at 25% 35%, rgba(94,234,212,0.35) 0%, transparent 40%), radial-gradient(circle at 75% 65%, rgba(20,184,166,0.25) 0%, transparent 35%), linear-gradient(145deg, #134e4a, #0f3d38)",
-              }}
-            />
-            <div className="relative flex h-full flex-col justify-end p-8">
-              <p className="text-sm font-medium text-teal-100">
-                Layer-by-layer · Bioink · 3D tissue scaffolds
-              </p>
-              <p className="mt-2 font-serif text-2xl text-white">
-                From lab bench to personalized care pathways
-              </p>
-            </div>
+          <div className="relative min-h-[280px]">
+            <BioprintHomePreview />
+            <Link
+              href="/innovation"
+              className="absolute bottom-14 right-4 z-10 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-teal-950 shadow hover:bg-white"
+            >
+              Full lab →
+            </Link>
           </div>
         </div>
       </section>

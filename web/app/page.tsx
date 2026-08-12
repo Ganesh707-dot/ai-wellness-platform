@@ -49,7 +49,7 @@ export default function HomePage() {
 
         <div className="relative mx-auto flex max-w-6xl flex-col justify-center px-4 py-24 md:min-h-[88vh] md:py-28">
           <p className="inline-flex w-fit rounded-full border border-white/20 bg-white/10 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-teal-100 backdrop-blur">
-            Next-gen AI wellness
+            {APP_NAME}
           </p>
           <h1 className="mt-6 max-w-3xl font-serif text-5xl leading-[1.02] text-white md:text-6xl lg:text-7xl">
             Conversational care that routes to the right clinician

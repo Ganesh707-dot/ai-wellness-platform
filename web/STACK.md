@@ -17,7 +17,7 @@ Cursor is correct — there are **zero Java files**. “Backend” here means **
 ## AI configuration (current)
 1. Browser calls `POST /api/ai/chat` (also triage/coach/copilot routes)
 2. `lib/ai-client.ts` runs:
-   - **Default:** Maha clinical engine (always works, specialty routing)
+   - **Default:** Veridian clinical engine (always works, specialty routing)
    - **Optional live LLM:** set Vercel env `GROQ_API_KEY` (free at console.groq.com) or `AI_LIVE=true` for Pollinations
 
 ## Auth / RBAC

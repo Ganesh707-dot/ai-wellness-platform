@@ -1,4 +1,4 @@
-# Developer Roadmap — AI Wellness (in-repo copy)
+# Developer Roadmap — Veridian Clinical (in-repo copy)
 
 See also: `C:\Users\Admin\Projects\DEVELOPER_ROADMAP.md` (master for all 3 projects)
 

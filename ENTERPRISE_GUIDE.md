@@ -1,4 +1,4 @@
-# Maha Health — Enterprise Technical Guide + User Manual
+# Veridian Clinical — Enterprise Technical Guide + User Manual
 
 **Live demo:** https://maha-ai-wellness.vercel.app  
 **Deploy root:** `web/` (Next.js App Router)  
@@ -8,7 +8,7 @@
 
 ## 1. One-line product pitch
 
-Maha Health is a **full-stack TypeScript telehealth platform** with **permission-based RBAC**, **patient → clinician encounter handoff**, and **clinical decision support (CDS)** — not “AI diagnosis” and not a Java microservice. It is designed as a **problem-solver for fresh doctors** (never open a blank consult) and a **control plane for admins** (IAM + RBAC + audit).
+Veridian Clinical is a **full-stack TypeScript telehealth platform** with **permission-based RBAC**, **patient → clinician encounter handoff**, and **clinical decision support (CDS)** — not “AI diagnosis” and not a Java microservice. It is designed as a **problem-solver for fresh doctors** (never open a blank consult) and a **control plane for admins** (IAM + RBAC + audit).
 
 ---
 
@@ -272,7 +272,7 @@ Password for all seed users: **`password123`**
 
 ### 7.1 Elevator story (30–45 sec)
 
-> “I built Maha Health, a Next.js full-stack telehealth platform. Instead of role-only dashboards, I implemented permission-based RBAC with JWT claims, middleware enforcement, and an admin activation workflow where new users stay pending until an admin grants least-privilege permissions. Clinically, I separated patient AI and doctor AI: patients get Symptom Navigator; doctors get Encounter CDS with chief-complaint handoff—so fresh doctors never open a blank consult. It’s TypeScript end-to-end on Vercel, with Prisma ready for Postgres.”
+> “I built Veridian Clinical, a Next.js full-stack telehealth platform. Instead of role-only dashboards, I implemented permission-based RBAC with JWT claims, middleware enforcement, and an admin activation workflow where new users stay pending until an admin grants least-privilege permissions. Clinically, I separated patient AI and doctor AI: patients get Symptom Navigator; doctors get Encounter CDS with chief-complaint handoff—so fresh doctors never open a blank consult. It’s TypeScript end-to-end on Vercel, with Prisma ready for Postgres.”
 
 ### 7.2 Questions you should be able to answer
 
@@ -301,7 +301,7 @@ Use carefully as **demo scale**, not real production traffic: thousands of patie
 ### 7.4 ChatGPT practice prompt (copy-paste)
 
 ```
-I built Maha Health: Next.js 15 + React 19 + Auth.js JWT + permission RBAC
+I built Veridian Clinical: Next.js 15 + React 19 + Auth.js JWT + permission RBAC
 (resource:action), admin pending→activate with grantedPermissions, patient
 Symptom Navigator vs doctor Encounter CDS, booking handoff of chief complaint,
 deployed on Vercel. Act as a senior interviewer for a 15 LPA full-stack role.

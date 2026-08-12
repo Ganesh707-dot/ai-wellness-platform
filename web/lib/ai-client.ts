@@ -336,7 +336,7 @@ export async function runClinicalAssistantChat(
 }
 
 /** @deprecated use runClinicalAssistantChat */
-export const chatWithMahaAI = runClinicalAssistantChat;
+export const chatWithClinicalAI = runClinicalAssistantChat;
 
 export function buildClinicalCopilot(concern: string) {
   const analytics = buildIntentAnalytics(concern);

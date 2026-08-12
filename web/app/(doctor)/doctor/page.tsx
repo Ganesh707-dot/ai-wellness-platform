@@ -119,7 +119,7 @@ export default function DoctorDashboard() {
                 : "Guide juniors and protect quality"}
             </h2>
             <p className="mt-3 text-sm text-teal-50/90">
-              Maha turns patient intake into clinician-ready intelligence —
+              Veridian Clinical turns patient intake into clinician-ready intelligence —
               chief complaint, intent pathway, red flags, and SOAP support —
               so early-career doctors deliver confident, safe telehealth.
             </p>

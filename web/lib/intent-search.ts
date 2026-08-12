@@ -1,5 +1,5 @@
 /**
- * Context-based intent search for Maha Clinical AI.
+ * Context-based intent search for Veridian Clinical AI.
  * Used by doctor patient search + patient/doctor answer generation.
  * Scores meaning (intent + context), not blind keyword templates.
  */

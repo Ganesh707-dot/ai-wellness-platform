@@ -11,7 +11,7 @@ export function generateMeetingCode(): string {
 }
 
 export function generateVideoCallUrl(meetingCode: string): string {
-  return `https://meet.maha-ai.health/r/${meetingCode}`;
+  return `https://meet.veridian-clinical.health/r/${meetingCode}`;
 }
 
 export async function sendConfirmationEmail(_data: unknown) {

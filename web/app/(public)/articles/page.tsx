@@ -79,7 +79,7 @@ export default function ArticlesListPage() {
           </p>
           <h1 className="mt-2 font-serif text-4xl md:text-5xl">Wellness library</h1>
           <p className="mt-3 max-w-2xl text-teal-50/90">
-            Clinician-authored pathways used across Maha consult prep and AI handoff.
+            Clinician-authored pathways used across Veridian consult prep and AI handoff.
           </p>
         </div>
       </div>

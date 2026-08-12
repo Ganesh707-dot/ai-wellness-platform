@@ -1,4 +1,4 @@
-# AI Wellness — Hands-On Study Guide (15 LPA Full-Stack)
+# Veridian Clinical — Hands-On Study Guide (15 LPA Full-Stack)
 
 **Live:** https://maha-ai-wellness.vercel.app  
 **Repo:** https://github.com/Ganesh707-dot/ai-wellness-platform (deploy folder: `web/`)  
@@ -102,7 +102,7 @@ npx vercel --prod --yes
 
 | Project | Live | Stack |
 |---------|------|-------|
-| **AI Wellness** | maha-ai-wellness.vercel.app | Next.js + Groq |
+| **Veridian Clinical** | maha-ai-wellness.vercel.app | Next.js + Groq |
 | **Career Cockpit** | careerpilot-ai-omega-khaki.vercel.app | Next.js + FastAPI + Groq |
 | **IBS AirBook** | airbook-glvv.onrender.com | Angular + Spring Boot |
 

@@ -1,4 +1,4 @@
-# Maha AI — Deployment Guide (Enterprise-style, Free)
+# Veridian Clinical — Deployment Guide (Enterprise-style, Free)
 
 No Docker required. Production path = **Vercel (app) + Neon (Postgres)**.
 
@@ -21,7 +21,7 @@ Docker is optional later for local parity — not required for cloud deploy.
 ## Step 1 — Create free Neon database (5 min)
 
 1. Go to https://console.neon.tech and sign up (GitHub is fine).
-2. **New Project** → name: `maha-ai-wellness`.
+2. **New Project** → name: `veridian-clinical`.
 3. Click **Connect** → copy the **pooled** connection string (hostname contains `-pooler`).
 4. It looks like:
    ```

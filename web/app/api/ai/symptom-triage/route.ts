@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       evidenceLinks: [
         {
           label: "Care pathway card",
-          url: `https://knowledge.maha-ai.health/pathways/${match.specialty.toLowerCase()}`,
+          url: `https://knowledge.veridian-clinical.health/pathways/${match.specialty.toLowerCase()}`,
         },
       ],
       disclaimer:

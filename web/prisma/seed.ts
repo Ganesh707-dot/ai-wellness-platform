@@ -115,7 +115,7 @@ async function main() {
       notes: "Seeded demo appointment",
       attachments: [],
       videoCallUrl: "https://meet.wellness-platform.com/demo",
-      meetingCode: "MAHA-DEMO",
+      meetingCode: "VCLN-DEMO",
       duration: 30,
     },
   });

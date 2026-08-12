@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { APP_NAME } from "@/lib/app-brand";
+import { APP_NAME, LIVE_SITE_URL } from "@/lib/app-brand";
 
 const FOOTER_LINKS = {
   ai: [
@@ -40,7 +40,7 @@ export function SiteFooter() {
               {APP_NAME}
             </p>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-teal-100/85">
-              Next-gen AI wellness — conversational intake, sentence-based
+              Enterprise AI wellness — conversational intake, sentence-based
               specialty routing, clinician handoff, and regenerative medicine
               innovation stories. Clinical decision support only.
             </p>
@@ -104,10 +104,10 @@ export function SiteFooter() {
           <p>
             Live:{" "}
             <a
-              href="https://maha-ai-wellness.vercel.app"
+              href={LIVE_SITE_URL}
               className="underline hover:text-white"
             >
-              maha-ai-wellness.vercel.app
+              {LIVE_SITE_URL.replace(/^https:\/\//, "")}
             </a>
           </p>
         </div>

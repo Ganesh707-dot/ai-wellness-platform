@@ -1,5 +1,5 @@
 /**
- * Maha AI — enterprise demo data fabric
+ * Veridian Clinical — enterprise demo data fabric
  * Procedurally generates thousands of records with stable seed + realistic CDN/mock URLs.
  * DEMO_MODE=true (default). Set DEMO_MODE=false + DATABASE_URL for Neon persistence.
  */
@@ -76,11 +76,11 @@ export const CDN = {
       ) % UNSplash.length;
     return UNSplash[idx];
   },
-  meet: (code: string) => `https://meet.jit.si/maha-ai-${code}`,
+  meet: (code: string) => `https://meet.jit.si/veridian-clinical-${code}`,
   fhir: (resource: string, id: string) =>
-    `https://api.maha-ai.health/fhir/r4/${resource}/${id}`,
+    `https://api.veridian-clinical.health/fhir/r4/${resource}/${id}`,
   telemetry: (stream: string) =>
-    `https://telemetry.maha-ai.health/v1/streams/${stream}`,
+    `https://telemetry.veridian-clinical.health/v1/streams/${stream}`,
 };
 
 export interface DemoUser {
@@ -170,7 +170,7 @@ function buildDoctors(count = 186) {
       currency: "INR",
       rating: Number((3.8 + rng() * 1.2).toFixed(1)),
       totalConsultations: 40 + Math.floor(rng() * 900),
-      bio: `${specialization.replaceAll("_", " ")} clinician on Maha AI care network.`,
+      bio: `${specialization.replaceAll("_", " ")} clinician on Veridian Clinical care network.`,
       isVerified: rng() > 0.08,
       qualifications:
         specialization === "HOMEOPATHY"
@@ -178,7 +178,7 @@ function buildDoctors(count = 186) {
           : ["MBBS", "MD"],
       profileImage: CDN.avatar(id),
       fhirPractitionerUrl: CDN.fhir("Practitioner", id),
-      calendarFeedUrl: `https://cal.maha-ai.health/feeds/${id}.ics`,
+      calendarFeedUrl: `https://cal.veridian-clinical.health/feeds/${id}.ics`,
     });
   }
   // Pin demo login clinicians so booking privacy maps cleanly
@@ -224,7 +224,7 @@ function buildAppointments(count = 500) {
     const dayOffset = Math.floor(rng() * 90) - 45;
     const scheduledAt = new Date(Date.now() + dayOffset * 86400000);
     scheduledAt.setHours(9 + Math.floor(rng() * 8), rng() > 0.5 ? 0 : 30, 0, 0);
-    const code = `MAHA-${pad(i, 4)}`;
+    const code = `VCLN-${pad(i, 4)}`;
     list.push({
       id,
       patientName: `${pick(rng, FIRST)} ${pick(rng, LAST)}`,
@@ -240,7 +240,7 @@ function buildAppointments(count = 500) {
       fhirEncounterUrl: CDN.fhir("Encounter", id),
       recordingUrl:
         rng() > 0.7
-          ? `https://cdn.maha-ai.health/recordings/${id}/session.m3u8`
+          ? `https://cdn.veridian-clinical.health/recordings/${id}/session.m3u8`
           : null,
     });
   }
@@ -256,8 +256,8 @@ function buildAppointments(count = 500) {
       status: "CONFIRMED",
       scheduledAt: new Date(Date.now() + 3 * 86400000).toISOString(),
       concern: "Seasonal sneezing, itchy eyes, and disrupted sleep for 5 days",
-      meetingCode: "MAHA-7K2P",
-      videoCallUrl: CDN.meet("MAHA-7K2P"),
+      meetingCode: "VCLN-7K2P",
+      videoCallUrl: CDN.meet("VCLN-7K2P"),
       fhirEncounterUrl: CDN.fhir("Encounter", "apt_01"),
       recordingUrl: null,
     },
@@ -271,10 +271,10 @@ function buildAppointments(count = 500) {
       status: "COMPLETED",
       scheduledAt: new Date(Date.now() - 10 * 86400000).toISOString(),
       concern: "Stress and waking at 3am with racing thoughts",
-      meetingCode: "MAHA-DONE1",
-      videoCallUrl: CDN.meet("MAHA-DONE1"),
+      meetingCode: "VCLN-DONE1",
+      videoCallUrl: CDN.meet("VCLN-DONE1"),
       fhirEncounterUrl: CDN.fhir("Encounter", "apt_02"),
-      recordingUrl: `https://cdn.maha-ai.health/recordings/apt_02/session.m3u8`,
+      recordingUrl: `https://cdn.veridian-clinical.health/recordings/apt_02/session.m3u8`,
     },
     {
       id: "apt_03",
@@ -286,8 +286,8 @@ function buildAppointments(count = 500) {
       status: "SCHEDULED",
       scheduledAt: new Date(Date.now() + 1 * 86400000).toISOString(),
       concern: "Headache for 2 days — needs instant first-aid guidance then consult",
-      meetingCode: "MAHA-HEAD1",
-      videoCallUrl: CDN.meet("MAHA-HEAD1"),
+      meetingCode: "VCLN-HEAD1",
+      videoCallUrl: CDN.meet("VCLN-HEAD1"),
       fhirEncounterUrl: CDN.fhir("Encounter", "apt_03"),
       recordingUrl: null,
     },
@@ -301,8 +301,8 @@ function buildAppointments(count = 500) {
       status: "CONFIRMED",
       scheduledAt: new Date(Date.now() + 2 * 86400000).toISOString(),
       concern: "Eye pain and swelling after outdoor dust exposure",
-      meetingCode: "MAHA-EYE1",
-      videoCallUrl: CDN.meet("MAHA-EYE1"),
+      meetingCode: "VCLN-EYE1",
+      videoCallUrl: CDN.meet("VCLN-EYE1"),
       fhirEncounterUrl: CDN.fhir("Encounter", "apt_04"),
       recordingUrl: null,
     }
@@ -394,7 +394,7 @@ const ARTICLE_SEEDS = [
   {
     title: "Circadian recovery protocols for clinic follow-ups",
     slug: "circadian-recovery-protocols",
-    excerpt: "How Maha AI clinics structure sleep-linked recovery between visits.",
+    excerpt: "How Veridian Clinical clinics structure sleep-linked recovery between visits.",
     category: { name: "Preventive Care", slug: "preventive-care" },
   },
   {
@@ -428,15 +428,15 @@ export const demoArticles = ARTICLE_SEEDS.map((a, i) => ({
   title: a.title,
   slug: a.slug,
   excerpt: a.excerpt,
-  content: `${a.excerpt}\n\nThis clinical education article is authored for Maha AI patients and referring clinicians. It is not a substitute for personalized medical advice.\n\nCare teams on the platform use these protocols with appointment history, prescription context, and AI triage summaries to prepare denser consults.`,
+  content: `${a.excerpt}\n\nThis clinical education article is authored for Veridian Clinical patients and referring clinicians. It is not a substitute for personalized medical advice.\n\nCare teams on the platform use these protocols with appointment history, prescription context, and AI triage summaries to prepare denser consults.`,
   author: i % 2 === 0 ? "Dr. Meera Sharma" : "Dr. Arjun Nair",
   coverImage: CDN.cover(a.slug),
   publishedAt: new Date(Date.now() - (i + 2) * 86400000).toISOString(),
   viewCount: 800 + i * 340,
   likes: 40 + i * 17,
   category: a.category,
-  seoKeywords: [a.category.slug, "maha-ai", "wellness"],
-  canonicalUrl: `https://www.maha-ai.health/articles/${a.slug}`,
+  seoKeywords: [a.category.slug, "vcln-ai", "wellness"],
+  canonicalUrl: `https://www.veridian-clinical.health/articles/${a.slug}`,
 }));
 
 export function isDemoMode() {
@@ -484,7 +484,7 @@ export function getDoctorStats() {
     revenueThisMonth: 268400,
     panelSize: 312,
     aiAssistedNotes: 186,
-    calendarFeedUrl: `https://cal.maha-ai.health/feeds/doc_01.ics`,
+    calendarFeedUrl: `https://cal.veridian-clinical.health/feeds/doc_01.ics`,
     networkScale: PLATFORM_SCALE,
   };
 }
@@ -559,11 +559,11 @@ export function runSymptomTriage(input: {
     urgency,
     confidence: Math.min(0.96, Number(confidence.toFixed(2))),
     likelyCategory,
-    summary: `Maha triage mapped this presentation to ${likelyCategory.replaceAll("_", " ").toLowerCase()} with ${urgency.toLowerCase()} urgency (confidence ${Math.round(Math.min(0.96, confidence) * 100)}%).`,
+    summary: `Veridian triage mapped this presentation to ${likelyCategory.replaceAll("_", " ").toLowerCase()} with ${urgency.toLowerCase()} urgency (confidence ${Math.round(Math.min(0.96, confidence) * 100)}%).`,
     recommendedNextStep:
       urgency === "HIGH"
         ? "Escalate to emergency services now. Do not rely on telehealth for red-flag symptoms."
-        : "Book a Maha AI clinician consult and attach this triage packet to the encounter.",
+        : "Book a Veridian Clinical clinician consult and attach this triage packet to the encounter.",
     careTips: [
       "Log onset time, triggers, and current medications",
       "Capture vitals if available (temp, SpO2, BP)",
@@ -574,16 +574,16 @@ export function runSymptomTriage(input: {
     evidenceLinks: [
       {
         label: "Care pathway card",
-        url: `https://knowledge.maha-ai.health/pathways/${likelyCategory.toLowerCase()}`,
+        url: `https://knowledge.veridian-clinical.health/pathways/${likelyCategory.toLowerCase()}`,
       },
       {
         label: "Safety rubric",
-        url: "https://knowledge.maha-ai.health/safety/triage-rubric-v3",
+        url: "https://knowledge.veridian-clinical.health/safety/triage-rubric-v3",
       },
     ],
     disclaimer:
       "AI triage is clinical decision support only — not a diagnosis or emergency service.",
-    model: "maha-triage-v2-demo",
+    model: "vcln-triage-v2-demo",
     traceId: `trace_${Date.now().toString(36)}`,
     latencyMs: 380 + Math.floor(Math.random() * 220),
   };
@@ -606,8 +606,8 @@ export function getConsultationAiInsights() {
       plan: "Homeopathy protocol + sleep hygiene + 2-week review",
     },
     riskScore: 0.28,
-    model: "maha-copilot-v2-demo",
-    knowledgeBaseUrl: "https://knowledge.maha-ai.health/copilot/allergy-v2",
+    model: "vcln-copilot-v2-demo",
+    knowledgeBaseUrl: "https://knowledge.veridian-clinical.health/copilot/allergy-v2",
   };
 }
 
@@ -635,7 +635,7 @@ export function runWellnessCoach(prompt: string) {
       title: a.title,
       url: `/articles/${a.slug}`,
     })),
-    model: "maha-coach-v1-demo",
+    model: "vcln-coach-v1-demo",
     disclaimer: "Coaching guidance is educational and not medical advice.",
   };
 }

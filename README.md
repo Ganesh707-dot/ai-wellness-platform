@@ -1,52 +1,43 @@
-# Maha AI — Holistic Wellness Platform
+# Veridian Clinical — Enterprise AI Wellness Platform
 
-Enterprise-style telehealth demo for a doctor-facing wellness product.
+Enterprise telehealth platform with conversational AI, RBAC, and clinician encounter handoff.
 
 **Live:** https://maha-ai-wellness.vercel.app  
-**Runnable app:** [`web/`](./web/)  
-**Full technical + RBAC user manual + 15 LPA interview kit:** [`ENTERPRISE_GUIDE.md`](./ENTERPRISE_GUIDE.md)  
-**Deploy (no Docker):** [`DEPLOYMENT.md`](./DEPLOYMENT.md)  
-**Extra learning notes:** [`LEARNING_GUIDE.md`](./LEARNING_GUIDE.md)
+**Product name:** Veridian Clinical
 
 ## Stack
 
-Next.js 15 · React 19 · TypeScript · Auth.js v5 · Prisma · PostgreSQL (Neon) · Tailwind · Zod · Vercel
+- Next.js 15 · React 19 · TypeScript
+- Auth.js v5 · RBAC middleware
+- Prisma · Neon (demo mode default)
+- Groq LLM · ClinicalTrials.gov + PubMed APIs
 
 ## Quick start
 
-1. Create a free Neon Postgres DB → copy connection string  
-2. Follow [`DEPLOYMENT.md`](./DEPLOYMENT.md)
-
 ```bash
 cd web
-cp .env.example .env.local
-# set DATABASE_URL, AUTH_SECRET, NEXTAUTH_SECRET
 npm install
-npx prisma db push
-npm run db:seed
 npm run dev
 ```
 
-Demo logins (password `password123`):  
-`patient@test.com` · `doctor@test.com` (fresh clinician) · `lead@test.com` · `admin@test.com`
+## Demo logins
 
-## What’s in this repo
+| Email | Role | Password |
+|-------|------|----------|
+| patient@test.com | Patient | password123 |
+| doctor@test.com | Doctor | password123 |
+| admin@test.com | Admin | password123 |
 
-| Path | Meaning |
-|------|---------|
-| `web/` | **Production app** (deploy this) |
-| `shared/`, `ui/`, `backend-api/`, `ai-services/`, `docs/` | Original feature batches (source modules) |
-| `archives/` | Zip backups of batches |
+## Docs
 
-## Features
+- `DEVELOPER_ROADMAP.md` — paths, deploy, Vercel
+- `PRIVATE_ACCESS_GUIDE.md` — site password + private GitHub
+- `web/docs/HANDS_ON_GUIDE.md` — interview prep
 
-- Multi-role auth (Patient / Doctor / Admin) + middleware RBAC
-- Appointment booking wizard
-- Role dashboards + role-scoped APIs
-- Articles CMS
-- Prisma schema with audit/consent foundations
-- AI fields reserved for Phase 3+ (roadmap)
+## Deploy
 
-## Author
+```bash
+cd web && npx vercel --prod --yes
+```
 
-Full-stack JavaScript engineer · ~4.5 years · React / Next.js / Angular / SQL / basic AI
+Set `SITE_ACCESS_PASSWORD` on Vercel for portfolio gate. Set `GROQ_API_KEY` for live AI.

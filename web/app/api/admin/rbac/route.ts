@@ -26,7 +26,7 @@ export async function GET() {
       (session?.user as { permissions?: string[] })?.permissions ||
       matrix.roles.find((r) => r.role === role)?.permissions ||
       [],
-    policyVersion: "maha-rbac-v1",
+    policyVersion: "vcln-rbac-v1",
     enforcement: "middleware + API permission guards",
   });
 }

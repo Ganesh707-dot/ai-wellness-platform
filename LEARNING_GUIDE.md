@@ -1,4 +1,4 @@
-# Maha AI — Learning Guide (paste into ChatGPT)
+# Veridian Clinical — Learning Guide (paste into ChatGPT)
 
 Use this file as your **system context** when learning with ChatGPT. Goal: explain this project like a **4.5-year full-stack JS engineer targeting ~15 LPA**.
 
@@ -15,7 +15,7 @@ Use this file as your **system context** when learning with ChatGPT. Goal: expla
 
 ## One-sentence product pitch
 
-**Maha AI** is a multi-role telehealth web app where patients book consultations, doctors manage practice workflows, and admins oversee users/appointments — built with Next.js App Router, Auth.js RBAC, Prisma/PostgreSQL, and a modular feature architecture.
+**Veridian Clinical** is a multi-role telehealth web app where patients book consultations, doctors manage practice workflows, and admins oversee users/appointments — built with Next.js App Router, Auth.js RBAC, Prisma/PostgreSQL, and a modular feature architecture.
 
 ---
 
@@ -141,7 +141,7 @@ Password reset stub, OAuth optional, email optional, AI phases planned, medical 
 
 ```
 You are my senior mentor for a 15 LPA full-stack interview prep.
-I built Maha AI — Next.js 15, Auth.js v5, Prisma, Neon Postgres, role-based telehealth.
+I built Veridian Clinical — Next.js 15, Auth.js v5, Prisma, Neon Postgres, role-based telehealth.
 I have 4.5 years JS experience (React/Next/Angular/MySQL, basic AI).
 Teach me one concept at a time from my LEARNING_GUIDE.md, then quiz me,
 then give a stronger interview answer. Start with Auth.js JWT + RBAC middleware.

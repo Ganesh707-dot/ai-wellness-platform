@@ -71,6 +71,8 @@ npx vercel --prod --yes
 |-------|---------|
 | `POST /api/ai/chat` | Main conversational AI |
 | `GET /api/ai/status` | Is Groq configured? |
+| `GET /api/innovation/live-data` | **Live** ClinicalTrials.gov + PubMed |
+| `POST /api/innovation/lab-jobs` | Bioprint job orchestration |
 | `POST /api/ai/match-clinician` | Booking specialty + rank doctors |
 | `POST /api/ai/intake` | Sync transcript server-side |
 | `POST /api/auth/[...nextauth]` | Login session |
@@ -104,4 +106,4 @@ npx vercel --prod --yes
 | **Career Cockpit** | careerpilot-ai-omega-khaki.vercel.app | Next.js + FastAPI + Groq |
 | **IBS AirBook** | airbook-glvv.onrender.com | Angular + Spring Boot |
 
-See `C:\Users\Admin\Projects\PORTFOLIO_STUDY_GUIDE.md` for all three.
+See `C:\Users\Admin\Projects\DEVELOPER_ROADMAP.md` for full VS Code journey, paths, Vercel, and deploy commands.

@@ -6,22 +6,46 @@ import {
   Activity,
   Beaker,
   Cpu,
+  ExternalLink,
   Layers,
   Pause,
   Play,
   RotateCcw,
   Sparkles,
   Thermometer,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   BIOPRINT_APPLICATIONS,
   BIOPRINT_ENTERPRISE_STATS,
   BIOPRINT_PIPELINE,
-  type BioprintApplication,
 } from "@/lib/bioprint-data";
 
 type LogEntry = { id: number; time: string; message: string; level: "info" | "ok" | "warn" };
+
+type LiveTrial = {
+  nctId: string;
+  title: string;
+  status: string;
+  organization: string;
+  url: string;
+};
+
+type LiveDataPayload = {
+  fetchedAt: string;
+  live: boolean;
+  error?: string;
+  sources: { clinicalTrialsGov: string; pubMed: string };
+  stats: {
+    bioprintTrials: number;
+    recruitingTrials: number;
+    pubMedArticles: number;
+    tissueEngineeringTrials: number;
+  };
+  recentTrials: LiveTrial[];
+};
 
 function nowStamp() {
   return new Date().toLocaleTimeString([], {
@@ -136,7 +160,10 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
   const [headX, setHeadX] = useState(50);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [tick, setTick] = useState(0);
+  const [liveData, setLiveData] = useState<LiveDataPayload | null>(null);
+  const [liveLoading, setLiveLoading] = useState(true);
   const logId = useRef(0);
+  const jobIdRef = useRef<string | null>(null);
 
   const app = useMemo(
     () => BIOPRINT_APPLICATIONS.find((a) => a.id === appId) ?? BIOPRINT_APPLICATIONS[0],
@@ -150,20 +177,58 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
     );
   }, []);
 
+  useEffect(() => {
+    fetch("/api/innovation/live-data")
+      .then((r) => r.json())
+      .then((data: LiveDataPayload) => {
+        setLiveData(data);
+        if (data.live) {
+          pushLog(
+            `Live API sync — ${data.stats.bioprintTrials} bioprint trials · ${data.stats.pubMedArticles.toLocaleString()} PubMed articles`,
+            "ok"
+          );
+        } else {
+          pushLog(`API fallback — ${data.error ?? "offline"}`, "warn");
+        }
+      })
+      .catch(() => pushLog("Could not reach /api/innovation/live-data", "warn"))
+      .finally(() => setLiveLoading(false));
+  }, [pushLog]);
+
+  const syncJob = useCallback(
+    async (action: "start" | "pause" | "reset", currentLayer: number) => {
+      try {
+        const res = await fetch("/api/innovation/lab-jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, applicationId: appId, layer: currentLayer }),
+        });
+        const data = await res.json();
+        if (data.jobId) jobIdRef.current = data.jobId;
+        return data;
+      } catch {
+        return null;
+      }
+    },
+    [appId]
+  );
+
   const reset = useCallback(() => {
     setPrinting(false);
     setLayer(0);
     setHeadX(50);
+    void syncJob("reset", 0);
     pushLog("Print cycle reset — awaiting operator command", "warn");
-  }, [pushLog]);
+  }, [pushLog, syncJob]);
 
   const startPrint = useCallback(() => {
     if (printing) return;
     setLayer(0);
     setPrinting(true);
     setStageId("deposition");
+    void syncJob("start", 0);
     pushLog(`Initiating ${app.name} — ${app.bioink}`, "ok");
-  }, [app, printing, pushLog]);
+  }, [app, printing, pushLog, syncJob]);
 
   useEffect(() => {
     if (!printing) return;
@@ -185,6 +250,7 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
         }
         if (next % 4 === 0) {
           pushLog(`Layer ${next} crosslinked · viability within band`, "info");
+          void syncJob("start", next);
         }
         return next;
       });
@@ -201,7 +267,7 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
       window.clearInterval(layerTimer);
       window.clearInterval(headTimer);
     };
-  }, [printing, app.layers, app.name, pushLog]);
+  }, [printing, app.layers, app.name, pushLog, syncJob]);
 
   const viability = useMemo(() => {
     const progress = app.layers > 0 ? layer / app.layers : 0;
@@ -214,6 +280,20 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
   const flowRate = printing ? (11.5 + Math.sin(layer) * 0.8).toFixed(1) : "0.0";
   const integrity = layer > 0 ? Math.min(99.2, 92 + (layer / app.layers) * 7).toFixed(1) : "—";
   const stage = BIOPRINT_PIPELINE.find((s) => s.id === stageId) ?? BIOPRINT_PIPELINE[2];
+
+  const kpiStats = liveData?.live
+    ? [
+        ["Bioprint trials", liveData.stats.bioprintTrials],
+        ["PubMed articles", liveData.stats.pubMedArticles.toLocaleString()],
+        ["Recruiting now", liveData.stats.recruitingTrials],
+        ["Tissue eng. trials", liveData.stats.tissueEngineeringTrials],
+      ]
+    : [
+        ["Active trials", BIOPRINT_ENTERPRISE_STATS.activeTrials],
+        ["Constructs printed", BIOPRINT_ENTERPRISE_STATS.constructsPrinted.toLocaleString()],
+        ["Avg viability", `${BIOPRINT_ENTERPRISE_STATS.avgViability}%`],
+        ["Partner labs", BIOPRINT_ENTERPRISE_STATS.partnerLabs],
+      ];
 
   if (compact) {
     return (
@@ -229,13 +309,13 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
           <div className="border-t border-white/10 bg-black/20 px-4 py-3">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs text-teal-100/90">
-                {printing ? "Live deposition" : "Bioprint lab preview"}
+                {printing ? "Live deposition" : liveData?.live ? "Live API connected" : "Bioprint lab preview"}
               </p>
               <Button
                 size="sm"
                 variant="secondary"
                 className="h-7 bg-white/15 text-xs text-white hover:bg-white/25"
-                onClick={printing ? () => setPrinting(false) : startPrint}
+                onClick={printing ? () => { setPrinting(false); void syncJob("pause", layer); } : startPrint}
               >
                 {printing ? <Pause className="mr-1 h-3 w-3" /> : <Play className="mr-1 h-3 w-3" />}
                 {printing ? "Pause" : "Run demo"}
@@ -249,14 +329,47 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="space-y-8">
-      {/* Enterprise header strip */}
+      {/* Live API status */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-teal-900/10 bg-white px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-2 text-sm">
+          {liveData?.live ? (
+            <Wifi className="h-4 w-4 text-emerald-600" />
+          ) : (
+            <WifiOff className="h-4 w-4 text-amber-600" />
+          )}
+          <span className="font-medium text-stone-800">
+            {liveLoading
+              ? "Syncing live research APIs…"
+              : liveData?.live
+                ? "Connected to ClinicalTrials.gov + PubMed (free public APIs)"
+                : "Using cached fallback — external API unavailable"}
+          </span>
+        </div>
+        {liveData?.live && (
+          <div className="flex flex-wrap gap-2 text-xs">
+            <a
+              href={liveData.sources.clinicalTrialsGov}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-3 py-1 font-medium text-teal-900 hover:bg-teal-100"
+            >
+              ClinicalTrials.gov <ExternalLink className="h-3 w-3" />
+            </a>
+            <a
+              href={liveData.sources.pubMed}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-3 py-1 font-medium text-teal-900 hover:bg-teal-100"
+            >
+              PubMed <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        )}
+      </div>
+
+      {/* Enterprise header strip — live from APIs */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          ["Active trials", BIOPRINT_ENTERPRISE_STATS.activeTrials],
-          ["Constructs printed", BIOPRINT_ENTERPRISE_STATS.constructsPrinted.toLocaleString()],
-          ["Avg viability", `${BIOPRINT_ENTERPRISE_STATS.avgViability}%`],
-          ["Partner labs", BIOPRINT_ENTERPRISE_STATS.partnerLabs],
-        ].map(([label, val]) => (
+        {kpiStats.map(([label, val]) => (
           <div
             key={label}
             className="rounded-2xl border border-teal-900/10 bg-white px-4 py-3 shadow-sm"
@@ -275,7 +388,7 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-teal-200">
-                Enterprise bioprint lab · aw-bioprint-v2
+                Enterprise bioprint lab · aw-bioprint-v2 · API-driven
               </p>
               <h2 className="mt-1 font-serif text-2xl text-white md:text-3xl">
                 Bioprinting reshapes how tissue is studied, tested, and restored
@@ -285,7 +398,7 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
               <Button
                 size="sm"
                 className="bg-emerald-400 text-teal-950 hover:bg-emerald-300"
-                onClick={printing ? () => setPrinting(false) : startPrint}
+                onClick={printing ? () => { setPrinting(false); void syncJob("pause", layer); } : startPrint}
               >
                 {printing ? (
                   <>
@@ -433,6 +546,37 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
           )}
         </div>
       </div>
+
+      {/* Live trials from ClinicalTrials.gov */}
+      {liveData && liveData.recentTrials.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-800">
+            Live bioprinting trials (ClinicalTrials.gov)
+          </p>
+          <div className="mt-4 space-y-3">
+            {liveData.recentTrials.slice(0, 5).map((trial) => (
+              <a
+                key={trial.nctId}
+                href={trial.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex flex-col rounded-2xl border border-stone-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-mono text-teal-800">{trial.nctId}</p>
+                  <p className="mt-1 font-medium text-stone-900 group-hover:text-teal-900">
+                    {trial.title}
+                  </p>
+                  <p className="mt-1 text-xs text-stone-500">{trial.organization}</p>
+                </div>
+                <span className="mt-2 shrink-0 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-900 sm:mt-0">
+                  {trial.status.replaceAll("_", " ")}
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Regulatory + copy */}
       <div className="rounded-2xl bg-[#eef6f2] px-6 py-8 ring-1 ring-teal-900/10 md:px-10">

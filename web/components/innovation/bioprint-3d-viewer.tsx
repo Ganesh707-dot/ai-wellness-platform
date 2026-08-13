@@ -186,7 +186,7 @@ export function Bioprint3DViewer({
               region={region}
               progress={progress}
               printing={printing}
-              autoRotate={autoRotate && !printing}
+              autoRotate={autoRotate && printing && !engaged}
               interactive={engaged}
               width={canvasSize.w}
               height={canvasSize.h}

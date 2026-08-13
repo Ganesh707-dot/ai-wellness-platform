@@ -8,7 +8,7 @@ import {
   useEffect,
 } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Bounds, Center, ContactShadows, Float, OrbitControls } from "@react-three/drei";
+import { Bounds, Center, ContactShadows, OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Spherical, Vector3 } from "three";
 import type { Group, Mesh } from "three";
@@ -98,61 +98,77 @@ function DepositionGlow({
 function HeartOrgan({ progress, printing, region }: SceneProps) {
   const group = useRef<Group>(null);
   useFrame((state) => {
-    if (group.current && printing) {
-      group.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.4) * 0.08;
-    }
+    if (!group.current) return;
+    const beat = printing ? 1 + Math.sin(state.clock.elapsedTime * 3.2) * 0.05 : 1;
+    group.current.scale.setScalar(beat);
   });
+  const muscle = { color: "#8b1538", roughness: 0.38, metalness: 0.06 };
+  const muscleLight = { color: "#b91c4a", roughness: 0.35 };
   return (
     <group ref={group}>
-      <Float speed={1.2} rotationIntensity={0.04} floatIntensity={0.1}>
-        <mesh position={[-0.1, 0, 0]} scale={[0.85, 1.15, 0.9]}>
-          <sphereGeometry args={[0.24, 48, 48]} />
-          <meshStandardMaterial color="#7f1d3a" roughness={0.32} metalness={0.08} />
+      <mesh position={[0, -0.06, 0]} scale={[1.05, 1.15, 0.85]}>
+        <sphereGeometry args={[0.22, 48, 48]} />
+        <meshStandardMaterial {...muscle} />
+      </mesh>
+      <mesh position={[-0.12, 0.1, 0.04]} scale={[0.75, 0.65, 0.7]}>
+        <sphereGeometry args={[0.16, 40, 40]} />
+        <meshStandardMaterial {...muscleLight} />
+      </mesh>
+      <mesh position={[0.1, 0.12, 0.02]} scale={[0.7, 0.6, 0.65]}>
+        <sphereGeometry args={[0.15, 40, 40]} />
+        <meshStandardMaterial {...muscleLight} />
+      </mesh>
+      <mesh position={[0.02, 0.28, 0]} rotation={[0.55, 0, 0]}>
+        <capsuleGeometry args={[0.05, 0.22, 12, 20]} />
+        <meshStandardMaterial color="#fecdd3" roughness={0.28} />
+      </mesh>
+      <mesh position={[0.08, 0.22, -0.02]} rotation={[0.8, 0.3, 0]}>
+        <capsuleGeometry args={[0.035, 0.14, 10, 16]} />
+        <meshStandardMaterial color="#fda4af" roughness={0.3} />
+      </mesh>
+      {progress > 0 && (
+        <mesh position={[0.02, 0.02, 0.2]} scale={[1, 1, 0.15 + progress * 0.85]}>
+          <sphereGeometry args={[0.18, 32, 32]} />
+          <meshStandardMaterial color="#ef4444" transparent opacity={0.25 + progress * 0.35} emissive="#dc2626" emissiveIntensity={0.3} />
         </mesh>
-        <mesh position={[0.12, 0.05, 0.08]} scale={[0.75, 1, 0.8]}>
-          <sphereGeometry args={[0.2, 48, 48]} />
-          <meshStandardMaterial color="#9f1239" roughness={0.35} />
-        </mesh>
-        <mesh position={[0.02, 0.32, 0]} rotation={[0.45, 0, 0]}>
-          <cylinderGeometry args={[0.045, 0.055, 0.28, 20]} />
-          <meshStandardMaterial color="#fecdd3" roughness={0.25} />
-        </mesh>
-        <DepositionGlow
-          position={region.position}
-          radius={region.radius}
-          color={region.color}
-          emissive={region.emissive}
-          progress={progress}
-          printing={printing}
-        />
-      </Float>
+      )}
+      <DepositionGlow
+        position={region.position}
+        radius={region.radius}
+        color={region.color}
+        emissive={region.emissive}
+        progress={progress}
+        printing={printing}
+      />
     </group>
   );
 }
 
 function LiverOrgan({ progress, printing, region }: SceneProps) {
-  const group = useRef<Group>(null);
-  useFrame((state) => {
-    if (group.current) group.current.rotation.y = state.clock.elapsedTime * 0.12;
-  });
+  const liverMat = { color: "#7c2d12", roughness: 0.42, metalness: 0.05 };
+  const liverDark = { color: "#5c1d0a", roughness: 0.45 };
   return (
-    <group ref={group}>
-      <mesh position={[0, -0.35, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <boxGeometry args={[0.9, 0.55, 0.06]} />
-        <meshStandardMaterial color="#1e293b" metalness={0.4} roughness={0.35} />
+    <group>
+      <mesh position={[0, -0.28, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.42, 0.48, 0.05, 32]} />
+        <meshStandardMaterial color="#1e293b" metalness={0.35} roughness={0.4} />
       </mesh>
-      {(
-        [
-          [0, 0.08, 0.05, 0.28, 0.22, 0.18],
-          [-0.18, 0, -0.05, 0.2, 0.16, 0.14],
-          [0.16, -0.02, 0, 0.18, 0.14, 0.12],
-        ] as const
-      ).map(([x, y, z, sx, sy, sz], i) => (
-        <mesh key={i} position={[x, y, z]} scale={[sx, sy, sz]}>
-          <sphereGeometry args={[0.5, 32, 32]} />
-          <meshStandardMaterial color="#854d0e" roughness={0.4} />
-        </mesh>
-      ))}
+      <mesh position={[0.02, 0.06, 0.04]} scale={[0.55, 0.38, 0.32]}>
+        <sphereGeometry args={[0.5, 40, 40]} />
+        <meshStandardMaterial {...liverMat} />
+      </mesh>
+      <mesh position={[-0.22, 0.02, -0.02]} scale={[0.35, 0.28, 0.25]}>
+        <sphereGeometry args={[0.5, 32, 32]} />
+        <meshStandardMaterial {...liverDark} />
+      </mesh>
+      <mesh position={[0.2, -0.02, 0]} scale={[0.3, 0.22, 0.2]}>
+        <sphereGeometry args={[0.5, 32, 32]} />
+        <meshStandardMaterial {...liverMat} />
+      </mesh>
+      <mesh position={[-0.08, 0.14, 0.08]} scale={[0.12, 0.2, 0.08]}>
+        <capsuleGeometry args={[0.5, 0.3, 8, 16]} />
+        <meshStandardMaterial color="#92400e" roughness={0.4} />
+      </mesh>
       <DepositionGlow
         position={region.position}
         radius={region.radius}
@@ -166,19 +182,25 @@ function LiverOrgan({ progress, printing, region }: SceneProps) {
 }
 
 function KneeOrgan({ progress, printing, region }: SceneProps) {
+  const bone = { color: "#f5f5f4", roughness: 0.42 };
+  const cartilage = { color: "#86efac", roughness: 0.32, metalness: 0.05 };
   return (
     <group>
-      <mesh position={[0, 0.35, 0]}>
-        <capsuleGeometry args={[0.12, 0.35, 12, 24]} />
-        <meshStandardMaterial color="#e7e5e4" roughness={0.45} />
+      <mesh position={[0, 0.32, 0]}>
+        <capsuleGeometry args={[0.11, 0.32, 16, 32]} />
+        <meshStandardMaterial {...bone} />
       </mesh>
-      <mesh position={[0, -0.22, 0]}>
-        <capsuleGeometry args={[0.1, 0.38, 12, 24]} />
-        <meshStandardMaterial color="#e7e5e4" roughness={0.45} />
+      <mesh position={[0, -0.2, 0]}>
+        <capsuleGeometry args={[0.09, 0.34, 16, 32]} />
+        <meshStandardMaterial {...bone} />
       </mesh>
-      <mesh position={[0, 0.08, 0.14]} scale={[1.1, 0.55, 0.35]}>
+      <mesh position={[0, 0.06, 0.12]} scale={[1.15, 0.6, 0.45]}>
         <sphereGeometry args={[0.14, 32, 32]} />
-        <meshStandardMaterial color="#d6d3d1" roughness={0.35} />
+        <meshStandardMaterial {...cartilage} />
+      </mesh>
+      <mesh position={[0, 0.02, 0.16]} scale={[0.7, 0.35, 0.25]}>
+        <sphereGeometry args={[0.1, 24, 24]} />
+        <meshStandardMaterial color="#4ade80" roughness={0.28} emissive="#22c55e" emissiveIntensity={printing ? 0.15 : 0.05} />
       </mesh>
       <DepositionGlow
         position={region.position}
@@ -193,61 +215,73 @@ function KneeOrgan({ progress, printing, region }: SceneProps) {
 }
 
 function ProceduralHuman({ region, progress, printing }: SceneProps) {
-  const group = useRef<Group>(null);
-  useFrame((state) => {
-    if (group.current && printing) {
-      group.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.25) * 0.04;
-    }
-  });
-
+  const brainMat = { color: "#fda4af", roughness: 0.65, metalness: 0.02 };
   return (
-    <group ref={group}>
-      <Float speed={0.8} rotationIntensity={0.02} floatIntensity={0.05}>
-        <mesh position={[0, 0.72, 0]}>
-          <sphereGeometry args={[0.17, 32, 32]} />
-          <meshStandardMaterial {...SKIN} />
+    <group>
+      <mesh position={[0, 0.72, 0]}>
+        <sphereGeometry args={[0.17, 32, 32]} />
+        <meshStandardMaterial {...SKIN} />
+      </mesh>
+      <mesh position={[-0.07, 0.74, 0.03]} scale={[0.9, 1, 0.85]}>
+        <sphereGeometry args={[0.1, 28, 28]} />
+        <meshStandardMaterial {...brainMat} />
+      </mesh>
+      <mesh position={[0.07, 0.74, 0.03]} scale={[0.9, 1, 0.85]}>
+        <sphereGeometry args={[0.1, 28, 28]} />
+        <meshStandardMaterial {...brainMat} />
+      </mesh>
+      {(
+        [
+          [-0.05, 0.78, 0.06],
+          [0.04, 0.77, 0.07],
+          [0, 0.7, 0.08],
+        ] as const
+      ).map(([x, y, z], i) => (
+        <mesh key={i} position={[x, y, z]}>
+          <sphereGeometry args={[0.035, 16, 16]} />
+          <meshStandardMaterial color="#fb7185" roughness={0.5} />
         </mesh>
-        <mesh position={[0, 0.58, 0]}>
-          <capsuleGeometry args={[0.055, 0.1, 8, 16]} />
-          <meshStandardMaterial {...SKIN} />
-        </mesh>
-        <mesh position={[0, 0.2, 0]} scale={[0.42, 0.55, 0.22]}>
-          <capsuleGeometry args={[0.5, 1, 12, 24]} />
-          <meshStandardMaterial {...SKIN} />
-        </mesh>
-        <mesh position={[-0.32, 0.35, 0.02]} rotation={[0, 0, 0.35]}>
-          <capsuleGeometry args={[0.055, 0.38, 10, 20]} />
-          <meshStandardMaterial {...SKIN} />
-        </mesh>
-        <mesh position={[-0.52, 0.02, 0.06]} rotation={[0, 0, 0.15]}>
-          <capsuleGeometry args={[0.048, 0.32, 10, 20]} />
-          <meshStandardMaterial {...SKIN} />
-        </mesh>
-        <mesh position={[0.32, 0.35, 0]} rotation={[0, 0, -0.35]}>
-          <capsuleGeometry args={[0.055, 0.38, 10, 20]} />
-          <meshStandardMaterial {...SKIN} />
-        </mesh>
-        <mesh position={[0.52, 0.02, 0]} rotation={[0, 0, -0.15]}>
-          <capsuleGeometry args={[0.048, 0.32, 10, 20]} />
-          <meshStandardMaterial {...SKIN} />
-        </mesh>
-        <mesh position={[-0.12, -0.48, 0]}>
-          <capsuleGeometry args={[0.075, 0.52, 12, 24]} />
-          <meshStandardMaterial {...SKIN} />
-        </mesh>
-        <mesh position={[0.12, -0.48, 0]}>
-          <capsuleGeometry args={[0.075, 0.52, 12, 24]} />
-          <meshStandardMaterial {...SKIN} />
-        </mesh>
-        <DepositionGlow
-          position={region.position}
-          radius={region.radius}
-          color={region.color}
-          emissive={region.emissive}
-          progress={progress}
-          printing={printing}
-        />
-      </Float>
+      ))}
+      <mesh position={[0, 0.58, 0]}>
+        <capsuleGeometry args={[0.055, 0.1, 8, 16]} />
+        <meshStandardMaterial {...SKIN} />
+      </mesh>
+      <mesh position={[0, 0.2, 0]} scale={[0.42, 0.55, 0.22]}>
+        <capsuleGeometry args={[0.5, 1, 12, 24]} />
+        <meshStandardMaterial {...SKIN} />
+      </mesh>
+      <mesh position={[-0.32, 0.35, 0.02]} rotation={[0, 0, 0.35]}>
+        <capsuleGeometry args={[0.055, 0.38, 10, 20]} />
+        <meshStandardMaterial {...SKIN} />
+      </mesh>
+      <mesh position={[-0.52, 0.02, 0.06]} rotation={[0, 0, 0.15]}>
+        <capsuleGeometry args={[0.048, 0.32, 10, 20]} />
+        <meshStandardMaterial {...SKIN} />
+      </mesh>
+      <mesh position={[0.32, 0.35, 0]} rotation={[0, 0, -0.35]}>
+        <capsuleGeometry args={[0.055, 0.38, 10, 20]} />
+        <meshStandardMaterial {...SKIN} />
+      </mesh>
+      <mesh position={[0.52, 0.02, 0]} rotation={[0, 0, -0.15]}>
+        <capsuleGeometry args={[0.048, 0.32, 10, 20]} />
+        <meshStandardMaterial {...SKIN} />
+      </mesh>
+      <mesh position={[-0.12, -0.48, 0]}>
+        <capsuleGeometry args={[0.075, 0.52, 12, 24]} />
+        <meshStandardMaterial {...SKIN} />
+      </mesh>
+      <mesh position={[0.12, -0.48, 0]}>
+        <capsuleGeometry args={[0.075, 0.52, 12, 24]} />
+        <meshStandardMaterial {...SKIN} />
+      </mesh>
+      <DepositionGlow
+        position={region.position}
+        radius={region.radius}
+        color={region.color}
+        emissive={region.emissive}
+        progress={progress}
+        printing={printing}
+      />
     </group>
   );
 }
@@ -265,15 +299,15 @@ function OrganSwitch(props: SceneProps) {
   }
 }
 
-function CameraRig({ region }: { region: AnatomyRegion }) {
+function CameraRig({ regionId, cameraConfig }: { regionId: string; cameraConfig: AnatomyRegion["camera"] }) {
   const { camera } = useThree();
   useEffect(() => {
-    camera.position.set(...region.camera.position);
+    camera.position.set(...cameraConfig.position);
     if ("fov" in camera) {
-      camera.fov = region.camera.fov;
+      camera.fov = cameraConfig.fov;
       camera.updateProjectionMatrix();
     }
-  }, [camera, region]);
+  }, [camera, regionId, cameraConfig]);
   return null;
 }
 
@@ -300,7 +334,7 @@ function Scene({
 
   return (
     <>
-      <CameraRig region={region} />
+      <CameraRig regionId={region.id} cameraConfig={region.camera} />
       <color attach="background" args={["#101a18"]} />
       <ambientLight intensity={0.9} />
       <directionalLight position={[2, 4, 3]} intensity={1.6} castShadow={!mobile} />
@@ -315,7 +349,7 @@ function Scene({
         far={1.4}
         color="#000000"
       />
-      <Bounds ref={boundsRef} fit clip observe margin={1.35}>
+      <Bounds key={region.id} ref={boundsRef} fit clip observe={false} margin={1.35}>
         <Center>
           <OrganSwitch
             region={region}
@@ -341,7 +375,7 @@ function Scene({
         target={cam.target}
         enableDamping
         dampingFactor={0.08}
-        autoRotate={autoRotate}
+        autoRotate={autoRotate && printing}
         autoRotateSpeed={1.1}
       />
     </>

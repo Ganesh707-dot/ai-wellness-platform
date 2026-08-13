@@ -163,6 +163,26 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
     pushLog(`Initiating ${app.name} — ${app.bioink}`, "ok");
   }, [app, printing, pushLog, syncJob]);
 
+  const resumePrint = useCallback(() => {
+    if (printing) return;
+    setPrinting(true);
+    setStageId("deposition");
+    void syncJob("start", layer);
+    pushLog(`Resuming at layer ${layer}/${app.layers} — deposition continues`, "ok");
+  }, [app.layers, layer, printing, pushLog, syncJob]);
+
+  const pausePrint = useCallback(() => {
+    setPrinting(false);
+    void syncJob("pause", layer);
+    pushLog(`Paused at layer ${layer}/${app.layers} — inspect view, then Resume`, "info");
+  }, [app.layers, layer, pushLog, syncJob]);
+
+  const playOrResume = useCallback(() => {
+    const canResume = layer > 0 && layer < app.layers;
+    if (canResume) resumePrint();
+    else startPrint();
+  }, [app.layers, layer, resumePrint, startPrint]);
+
   useEffect(() => {
     if (!printing) return;
     const t = window.setInterval(() => setTick((n) => n + 1), 400);
@@ -246,10 +266,10 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
           <Button
             size="sm"
             className="bg-teal-900 text-white hover:bg-teal-800"
-            onClick={printing ? () => { setPrinting(false); void syncJob("pause", layer); } : startPrint}
+            onClick={printing ? pausePrint : playOrResume}
           >
             {printing ? <Pause className="mr-1.5 h-3.5 w-3.5" /> : <Play className="mr-1.5 h-3.5 w-3.5" />}
-            {printing ? "Pause" : "Start bioprint"}
+            {printing ? "Pause" : layer > 0 && layer < app.layers ? "Resume" : "Start bioprint"}
           </Button>
         </div>
       </div>
@@ -329,10 +349,10 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
               <Button
                 size="sm"
                 className="flex-1 bg-teal-900 text-white hover:bg-teal-800"
-                onClick={printing ? () => { setPrinting(false); void syncJob("pause", layer); } : startPrint}
+                onClick={printing ? pausePrint : playOrResume}
               >
                 {printing ? <Pause className="mr-1 h-3.5 w-3.5" /> : <Play className="mr-1 h-3.5 w-3.5" />}
-                {printing ? "Pause" : "Start"}
+                {printing ? "Pause" : layer > 0 && layer < app.layers ? "Resume" : "Start"}
               </Button>
               <Button size="sm" variant="outline" onClick={reset}>
                 <RotateCcw className="mr-1 h-3.5 w-3.5" /> Reset

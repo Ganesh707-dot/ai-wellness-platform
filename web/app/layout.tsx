@@ -1,6 +1,7 @@
 import { AuthProvider } from "@/components/auth-provider";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { BrandWatermark } from "@/components/layout/brand-watermark";
 import { APP_NAME, APP_TAGLINE } from "@/lib/app-brand";
 import { DM_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
@@ -35,6 +36,7 @@ export default function RootLayout({
           <SiteHeader />
           <main>{children}</main>
           <SiteFooter />
+          <BrandWatermark />
         </AuthProvider>
       </body>
     </html>

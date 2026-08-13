@@ -27,7 +27,7 @@ const QUICK_LINKS = [
   {
     href: "/docs/hand-on",
     title: "Study Guide",
-    desc: "Git · Vercel · scenario interviews",
+    desc: "RBAC-secured · clinician & admin",
     accent: "from-amber-800 to-stone-800",
   },
 ];

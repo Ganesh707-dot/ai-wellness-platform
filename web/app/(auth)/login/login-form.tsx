@@ -47,6 +47,12 @@ function safeCallback(callbackUrl: string | null, role?: string | null) {
   ) {
     return null;
   }
+  if (
+    callbackUrl.startsWith("/docs/hand-on") &&
+    role === "PATIENT"
+  ) {
+    return null;
+  }
   return callbackUrl;
 }
 

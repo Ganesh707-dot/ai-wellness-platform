@@ -66,7 +66,9 @@ export const authConfig = {
       const isProtected =
         pathname.startsWith("/dashboard") ||
         pathname.startsWith("/doctor") ||
-        pathname.startsWith("/admin");
+        pathname.startsWith("/admin") ||
+        pathname === "/docs/hand-on" ||
+        pathname.startsWith("/docs/hand-on/");
 
       if (isProtected && !isLoggedIn) return false;
 

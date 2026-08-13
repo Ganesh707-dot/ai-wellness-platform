@@ -77,7 +77,7 @@ export default function InnovationPage() {
               <Link href="/ai/concierge?topic=regenerative-care">AI regenerative intake</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/docs/hand-on">Hands-on study guide</Link>
+              <Link href="/docs/hand-on">Secured study guide</Link>
             </Button>
           </div>
         </div>

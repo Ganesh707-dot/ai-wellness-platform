@@ -41,7 +41,6 @@ export default auth((req) => {
     "/ai",
     "/guest",
     "/innovation",
-    "/docs",
     "/api/innovation",
     "/api/auth",
     "/api/articles",
@@ -59,7 +58,11 @@ export default auth((req) => {
 
   if (pathname === "/") return NextResponse.next();
 
+  const isStudyGuide =
+    pathname === "/docs/hand-on" || pathname.startsWith("/docs/hand-on/");
+
   const isProtected =
+    isStudyGuide ||
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/doctor") ||
     pathname.startsWith("/admin") ||
@@ -80,6 +83,15 @@ export default auth((req) => {
   if (isLoggedIn && isProtected) {
     const needed = requiredPermissionForPath(pathname);
     if (needed && !sessionHasPermission(role, needed, granted)) {
+      if (isStudyGuide) {
+        if (pathname.startsWith("/api/")) {
+          return NextResponse.json(
+            { error: "Forbidden", missingPermission: needed },
+            { status: 403 }
+          );
+        }
+        return NextResponse.redirect(new URL("/unauthorized", req.nextUrl));
+      }
       // Wrong portal (e.g. doctor hit /dashboard) → send to role home, not Access Denied
       const home = homeForRole(role);
       if (

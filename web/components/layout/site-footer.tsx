@@ -23,7 +23,7 @@ const FOOTER_LINKS = {
     { href: "/admin", label: "Admin Console" },
   ],
   learn: [
-    { href: "/docs/hand-on", label: "Hands-On Study Guide" },
+    { href: "/docs/hand-on", label: "Study Guide · Secured" },
     { href: "/privacy", label: "Privacy" },
     { href: "/terms", label: "Terms" },
     { href: "/contact", label: "Contact" },

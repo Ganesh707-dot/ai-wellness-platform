@@ -1,3 +1,5 @@
+export const AUTHOR_MARK = "GV";
+export const AUTHOR_TAGLINE = "Anchor · Dove · Leaf";
 /** Single place for product naming (avoids scattered magic strings). */
 export const APP_NAME = "Veridian Clinical";
 /** Brand word only — use in interviews: “Veridian” (from Latin *viridis*, green / life). */

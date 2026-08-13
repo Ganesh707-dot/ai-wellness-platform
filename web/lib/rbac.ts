@@ -31,7 +31,8 @@ export type Permission =
   | "rbac:write"
   | "audit:read"
   | "analytics:ops"
-  | "content:publish";
+  | "content:publish"
+  | "content:study_guide";
 
 export const PERMISSION_CATALOG: Record<
   Permission,
@@ -152,6 +153,11 @@ export const PERMISSION_CATALOG: Record<
     domain: "Knowledge",
     description: "Publish clinical education content",
   },
+  "content:study_guide": {
+    label: "Study guide access",
+    domain: "Knowledge",
+    description: "Read secured hands-on master study guide",
+  },
 };
 
 const PATIENT_PERMS: Permission[] = [
@@ -172,6 +178,7 @@ const DOCTOR_PERMS: Permission[] = [
   "cds:encounter",
   "cds:escalation",
   "content:publish",
+  "content:study_guide",
 ];
 
 const LEAD_PERMS: Permission[] = [
@@ -195,6 +202,7 @@ const ADMIN_PERMS: Permission[] = [
   "audit:read",
   "analytics:ops",
   "content:publish",
+  "content:study_guide",
   "cds:patient_navigator",
 ];
 
@@ -234,6 +242,7 @@ export const ROLE_META: Record<
 
 /** Path prefix → required permission (first match wins) */
 export const ROUTE_PERMISSIONS: { prefix: string; permission: Permission }[] = [
+  { prefix: "/docs/hand-on", permission: "content:study_guide" },
   { prefix: "/admin/rbac", permission: "rbac:read" },
   { prefix: "/admin/users", permission: "users:read" },
   { prefix: "/admin", permission: "portal:admin" },

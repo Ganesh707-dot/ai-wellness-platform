@@ -9,7 +9,7 @@ import {
   useEffect,
 } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ContactShadows, Float, OrbitControls } from "@react-three/drei";
+import { Bounds, Center, ContactShadows, Float, OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Spherical, Vector3 } from "three";
 import type { Group, Mesh } from "three";
@@ -104,8 +104,8 @@ function HeartOrgan({ progress, printing, region }: SceneProps) {
     }
   });
   return (
-    <group ref={group} position={[0, 0.1, 0]} scale={3.2}>
-      <Float speed={1.2} rotationIntensity={0.06} floatIntensity={0.15}>
+    <group ref={group}>
+      <Float speed={1.2} rotationIntensity={0.04} floatIntensity={0.1}>
         <mesh position={[-0.1, 0, 0]} scale={[0.85, 1.15, 0.9]}>
           <sphereGeometry args={[0.24, 48, 48]} />
           <meshStandardMaterial color="#7f1d3a" roughness={0.32} metalness={0.08} />
@@ -137,7 +137,7 @@ function LiverOrgan({ progress, printing, region }: SceneProps) {
     if (group.current) group.current.rotation.y = state.clock.elapsedTime * 0.12;
   });
   return (
-    <group ref={group} position={[0, 0.08, 0]} scale={3}>
+    <group ref={group}>
       <mesh position={[0, -0.35, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <boxGeometry args={[0.9, 0.55, 0.06]} />
         <meshStandardMaterial color="#1e293b" metalness={0.4} roughness={0.35} />
@@ -168,7 +168,7 @@ function LiverOrgan({ progress, printing, region }: SceneProps) {
 
 function KneeOrgan({ progress, printing, region }: SceneProps) {
   return (
-    <group position={[0, 0.06, 0]} scale={3.2}>
+    <group>
       <mesh position={[0, 0.35, 0]}>
         <capsuleGeometry args={[0.12, 0.35, 12, 24]} />
         <meshStandardMaterial color="#e7e5e4" roughness={0.45} />
@@ -202,8 +202,8 @@ function ProceduralHuman({ region, progress, printing }: SceneProps) {
   });
 
   return (
-    <group ref={group} position={[0, 0.06, 0]} scale={1.35}>
-      <Float speed={0.8} rotationIntensity={0.03} floatIntensity={0.08}>
+    <group ref={group}>
+      <Float speed={0.8} rotationIntensity={0.02} floatIntensity={0.05}>
         <mesh position={[0, 0.72, 0]}>
           <sphereGeometry args={[0.17, 32, 32]} />
           <meshStandardMaterial {...SKIN} />
@@ -280,16 +280,10 @@ function CameraRig({ region }: { region: AnatomyRegion }) {
 
 function StudioPlatform() {
   return (
-    <group position={[0, -0.58, 0]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[1.05, 64]} />
-        <meshStandardMaterial color="#122420" roughness={0.85} metalness={0.15} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
-        <ringGeometry args={[1.02, 1.08, 64]} />
-        <meshBasicMaterial color="#2dd4bf" transparent opacity={0.22} />
-      </mesh>
-    </group>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.55, 0]} receiveShadow>
+      <circleGeometry args={[1.4, 64]} />
+      <meshStandardMaterial color="#152822" roughness={0.9} metalness={0.1} />
+    </mesh>
   );
 }
 
@@ -307,30 +301,32 @@ function Scene({
   return (
     <>
       <CameraRig region={region} />
-      <color attach="background" args={["#0b1412"]} />
-      <fog attach="fog" args={["#0b1412", 6, 16]} />
-      <ambientLight intensity={0.85} />
-      <directionalLight position={[2.5, 4, 3.5]} intensity={1.65} castShadow={!mobile} />
-      <directionalLight position={[-2.5, 1.5, -1.5]} intensity={0.45} color="#5eead4" />
-      <spotLight position={[0, 2.5, 1.2]} angle={0.45} penumbra={0.6} intensity={0.7} color="#a7f3d0" />
-      <hemisphereLight args={["#99f6e4", "#0f172a", 0.45]} />
+      <color attach="background" args={["#101a18"]} />
+      <ambientLight intensity={0.9} />
+      <directionalLight position={[2, 4, 3]} intensity={1.6} castShadow={!mobile} />
+      <directionalLight position={[-2, 2, -2]} intensity={0.5} color="#5eead4" />
+      <hemisphereLight args={["#b8f5e8", "#0f172a", 0.5]} />
       <StudioPlatform />
       <ContactShadows
-        position={[0, -0.57, 0]}
-        opacity={0.45}
-        scale={2.4}
-        blur={2.2}
-        far={1.2}
+        position={[0, -0.54, 0]}
+        opacity={0.35}
+        scale={3}
+        blur={2.5}
+        far={1.4}
         color="#000000"
       />
-      <OrganSwitch
-        region={region}
-        progress={progress}
-        printing={printing}
-        autoRotate={autoRotate}
-        interactive={interactive}
-        controlsRef={controlsRef}
-      />
+      <Bounds fit clip observe margin={1.35}>
+        <Center>
+          <OrganSwitch
+            region={region}
+            progress={progress}
+            printing={printing}
+            autoRotate={autoRotate}
+            interactive={interactive}
+            controlsRef={controlsRef}
+          />
+        </Center>
+      </Bounds>
       <OrbitControls
         ref={controlsRef}
         makeDefault
@@ -338,15 +334,15 @@ function Scene({
         enableZoom={interactive}
         enableRotate={interactive}
         enablePan={false}
-        minDistance={region.organ === "human" ? 0.85 : 0.65}
-        maxDistance={region.organ === "human" ? 2.0 : 1.55}
-        minPolarAngle={Math.PI / 6}
-        maxPolarAngle={Math.PI / 1.5}
+        minDistance={0.5}
+        maxDistance={4}
+        minPolarAngle={0.2}
+        maxPolarAngle={Math.PI - 0.2}
         target={cam.target}
         enableDamping
-        dampingFactor={0.09}
-        autoRotate={autoRotate && interactive}
-        autoRotateSpeed={1.2}
+        dampingFactor={0.08}
+        autoRotate={autoRotate}
+        autoRotateSpeed={1.1}
       />
     </>
   );
@@ -370,7 +366,7 @@ class CanvasErrorBoundary extends Component<
 
 function WebGLFallback() {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#0a1210] px-6 text-center">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#101a18] px-6 text-center">
       <p className="text-sm font-medium text-teal-100">3D viewer unavailable</p>
       <p className="text-xs text-teal-100/60">Your browser could not initialize WebGL. Try refreshing.</p>
     </div>
@@ -383,11 +379,13 @@ type BioprintHumanSceneProps = {
   printing: boolean;
   autoRotate?: boolean;
   interactive?: boolean;
+  width: number;
+  height: number;
 };
 
 export const BioprintHumanScene = forwardRef<BioprintViewerHandle, BioprintHumanSceneProps>(
   function BioprintHumanScene(
-    { region, progress, printing, autoRotate = false, interactive = true },
+    { region, progress, printing, autoRotate = false, interactive = true, width, height },
     ref
   ) {
     const mobile = useIsMobile();
@@ -435,14 +433,14 @@ export const BioprintHumanScene = forwardRef<BioprintViewerHandle, BioprintHuman
         <Canvas
           shadows={!mobile}
           camera={{ position: cam.position, fov: cam.fov }}
-          dpr={mobile ? [1, 1.25] : [1, 1.75]}
+          dpr={mobile ? [1, 1.25] : [1, 2]}
           gl={{
             antialias: true,
             alpha: false,
             powerPreference: "high-performance",
             failIfMajorPerformanceCaveat: false,
           }}
-          style={{ width: "100%", height: "100%", touchAction: "none" }}
+          style={{ display: "block", width, height }}
           onCreated={({ gl }) => {
             gl.domElement.addEventListener("webglcontextlost", (e) => e.preventDefault(), false);
           }}

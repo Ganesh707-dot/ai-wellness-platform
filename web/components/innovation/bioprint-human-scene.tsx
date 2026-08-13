@@ -9,7 +9,7 @@ import {
   useEffect,
 } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Float, Grid, OrbitControls } from "@react-three/drei";
+import { ContactShadows, Float, OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Spherical, Vector3 } from "three";
 import type { Group, Mesh } from "three";
@@ -31,8 +31,8 @@ type SceneProps = {
   region: AnatomyRegion;
   progress: number;
   printing: boolean;
-  immersive?: boolean;
   autoRotate?: boolean;
+  interactive?: boolean;
   controlsRef: React.RefObject<OrbitControlsImpl | null>;
 };
 
@@ -104,7 +104,7 @@ function HeartOrgan({ progress, printing, region }: SceneProps) {
     }
   });
   return (
-    <group ref={group} scale={3.2}>
+    <group ref={group} position={[0, 0.1, 0]} scale={3.2}>
       <Float speed={1.2} rotationIntensity={0.06} floatIntensity={0.15}>
         <mesh position={[-0.1, 0, 0]} scale={[0.85, 1.15, 0.9]}>
           <sphereGeometry args={[0.24, 48, 48]} />
@@ -137,7 +137,7 @@ function LiverOrgan({ progress, printing, region }: SceneProps) {
     if (group.current) group.current.rotation.y = state.clock.elapsedTime * 0.12;
   });
   return (
-    <group ref={group} scale={3}>
+    <group ref={group} position={[0, 0.08, 0]} scale={3}>
       <mesh position={[0, -0.35, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <boxGeometry args={[0.9, 0.55, 0.06]} />
         <meshStandardMaterial color="#1e293b" metalness={0.4} roughness={0.35} />
@@ -168,7 +168,7 @@ function LiverOrgan({ progress, printing, region }: SceneProps) {
 
 function KneeOrgan({ progress, printing, region }: SceneProps) {
   return (
-    <group scale={3.2}>
+    <group position={[0, 0.06, 0]} scale={3.2}>
       <mesh position={[0, 0.35, 0]}>
         <capsuleGeometry args={[0.12, 0.35, 12, 24]} />
         <meshStandardMaterial color="#e7e5e4" roughness={0.45} />
@@ -202,7 +202,7 @@ function ProceduralHuman({ region, progress, printing }: SceneProps) {
   });
 
   return (
-    <group ref={group} scale={1.35}>
+    <group ref={group} position={[0, 0.06, 0]} scale={1.35}>
       <Float speed={0.8} rotationIntensity={0.03} floatIntensity={0.08}>
         <mesh position={[0, 0.72, 0]}>
           <sphereGeometry args={[0.17, 32, 32]} />
@@ -278,11 +278,27 @@ function CameraRig({ region }: { region: AnatomyRegion }) {
   return null;
 }
 
+function StudioPlatform() {
+  return (
+    <group position={[0, -0.58, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[1.05, 64]} />
+        <meshStandardMaterial color="#122420" roughness={0.85} metalness={0.15} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
+        <ringGeometry args={[1.02, 1.08, 64]} />
+        <meshBasicMaterial color="#2dd4bf" transparent opacity={0.22} />
+      </mesh>
+    </group>
+  );
+}
+
 function Scene({
   region,
   progress,
   printing,
   autoRotate,
+  interactive = true,
   controlsRef,
 }: SceneProps) {
   const mobile = useIsMobile();
@@ -291,47 +307,46 @@ function Scene({
   return (
     <>
       <CameraRig region={region} />
-      <color attach="background" args={["#0a1210"]} />
-      <fog attach="fog" args={["#0a1210", 4, 14]} />
-      <ambientLight intensity={0.75} />
-      <directionalLight position={[3, 4, 4]} intensity={1.5} castShadow={!mobile} />
-      <directionalLight position={[-2, 2, -1]} intensity={0.5} color="#5eead4" />
-      <pointLight position={[0, 0.8, 1.5]} intensity={0.55} color="#34d399" />
-      <hemisphereLight args={["#99f6e4", "#0f172a", 0.4]} />
-      <Grid
-        args={[6, 6]}
-        cellSize={0.25}
-        cellThickness={0.4}
-        cellColor="#1a3d36"
-        sectionSize={1}
-        sectionThickness={0.8}
-        sectionColor="#2dd4bf"
-        fadeDistance={8}
-        fadeStrength={1.2}
-        followCamera={false}
-        infiniteGrid={false}
-        position={[0, -0.72, 0]}
+      <color attach="background" args={["#0b1412"]} />
+      <fog attach="fog" args={["#0b1412", 6, 16]} />
+      <ambientLight intensity={0.85} />
+      <directionalLight position={[2.5, 4, 3.5]} intensity={1.65} castShadow={!mobile} />
+      <directionalLight position={[-2.5, 1.5, -1.5]} intensity={0.45} color="#5eead4" />
+      <spotLight position={[0, 2.5, 1.2]} angle={0.45} penumbra={0.6} intensity={0.7} color="#a7f3d0" />
+      <hemisphereLight args={["#99f6e4", "#0f172a", 0.45]} />
+      <StudioPlatform />
+      <ContactShadows
+        position={[0, -0.57, 0]}
+        opacity={0.45}
+        scale={2.4}
+        blur={2.2}
+        far={1.2}
+        color="#000000"
       />
       <OrganSwitch
         region={region}
         progress={progress}
         printing={printing}
         autoRotate={autoRotate}
+        interactive={interactive}
         controlsRef={controlsRef}
       />
       <OrbitControls
         ref={controlsRef}
         makeDefault
+        enabled={interactive}
+        enableZoom={interactive}
+        enableRotate={interactive}
         enablePan={false}
-        minDistance={region.organ === "human" ? 0.75 : 0.55}
-        maxDistance={region.organ === "human" ? 2.2 : 1.65}
-        minPolarAngle={Math.PI / 8}
-        maxPolarAngle={Math.PI / 1.55}
+        minDistance={region.organ === "human" ? 0.85 : 0.65}
+        maxDistance={region.organ === "human" ? 2.0 : 1.55}
+        minPolarAngle={Math.PI / 6}
+        maxPolarAngle={Math.PI / 1.5}
         target={cam.target}
         enableDamping
-        dampingFactor={0.08}
-        autoRotate={autoRotate}
-        autoRotateSpeed={1.4}
+        dampingFactor={0.09}
+        autoRotate={autoRotate && interactive}
+        autoRotateSpeed={1.2}
       />
     </>
   );
@@ -366,13 +381,13 @@ type BioprintHumanSceneProps = {
   region: AnatomyRegion;
   progress: number;
   printing: boolean;
-  immersive?: boolean;
   autoRotate?: boolean;
+  interactive?: boolean;
 };
 
 export const BioprintHumanScene = forwardRef<BioprintViewerHandle, BioprintHumanSceneProps>(
   function BioprintHumanScene(
-    { region, progress, printing, immersive = false, autoRotate = false },
+    { region, progress, printing, autoRotate = false, interactive = true },
     ref
   ) {
     const mobile = useIsMobile();
@@ -436,8 +451,8 @@ export const BioprintHumanScene = forwardRef<BioprintViewerHandle, BioprintHuman
             region={region}
             progress={progress}
             printing={printing}
-            immersive={immersive}
             autoRotate={autoRotate}
+            interactive={interactive}
             controlsRef={controlsRef}
           />
         </Canvas>

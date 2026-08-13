@@ -22,20 +22,20 @@ export default function InnovationPage() {
     <div className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_20%_0%,#cfe8df_0%,transparent_50%),radial-gradient(ellipse_at_80%_20%,#e8dcc8_0%,transparent_45%)]" />
 
-      <section className="relative mx-auto max-w-6xl px-4 pb-8 pt-12">
+      <section className="relative mx-auto max-w-7xl px-4 pb-8 pt-12">
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-800">
           Future of care · Bio-innovation
         </p>
         <h1 className="mt-4 max-w-4xl font-serif text-4xl leading-tight text-stone-900 md:text-5xl">
-          Living cells as the building blocks of medical innovation
+          Enterprise bioprint lab
         </h1>
         <p className="mt-4 max-w-2xl text-stone-600">
-          Interactive bioprint lab — run a live deposition simulation, switch tissue
-          profiles, and trace the full clinical pipeline.
+          Operator console with live anatomy viewport — switch tissue profiles, run deposition
+          simulations, and trace the clinical pipeline with free research APIs.
         </p>
       </section>
 
-      <section className="relative mx-auto max-w-6xl px-4 pb-20">
+      <section className="relative mx-auto max-w-7xl px-4 pb-20">
         <BioprintLabStudio />
 
         <div className="mt-14 grid gap-6 md:grid-cols-3">

@@ -29,7 +29,7 @@ export const ANATOMY_REGIONS: Record<string, AnatomyRegion> = {
     color: "#5eead4",
     emissive: "#2dd4bf",
     tissueLabel: "Epidermal + dermal matrix",
-    camera: { position: [0.05, 0.08, 1.35], target: [0, 0.05, 0], fov: 42 },
+    camera: { position: [0.15, 0.12, 1.25], target: [0, 0.08, 0], fov: 40 },
   },
   cartilage: {
     id: "left_knee",
@@ -40,7 +40,7 @@ export const ANATOMY_REGIONS: Record<string, AnatomyRegion> = {
     color: "#6ee7b7",
     emissive: "#34d399",
     tissueLabel: "Hyaline cartilage construct",
-    camera: { position: [0.35, 0.12, 1.05], target: [0, 0.05, 0], fov: 38 },
+    camera: { position: [0.32, 0.18, 0.95], target: [0, 0.06, 0], fov: 36 },
   },
   "organ-chip": {
     id: "liver",
@@ -51,7 +51,7 @@ export const ANATOMY_REGIONS: Record<string, AnatomyRegion> = {
     color: "#c4b5fd",
     emissive: "#8b5cf6",
     tissueLabel: "Microfluidic liver spheroids",
-    camera: { position: [0.4, 0.2, 1.05], target: [0, 0.05, 0], fov: 38 },
+    camera: { position: [0.38, 0.22, 0.95], target: [0, 0.06, 0], fov: 36 },
   },
   cardiac: {
     id: "heart",
@@ -62,7 +62,7 @@ export const ANATOMY_REGIONS: Record<string, AnatomyRegion> = {
     color: "#fca5a5",
     emissive: "#ef4444",
     tissueLabel: "Patient-derived cardiomyocytes",
-    camera: { position: [0.3, 0.15, 1.05], target: [0, 0.05, 0], fov: 38 },
+    camera: { position: [0.28, 0.18, 0.98], target: [0, 0.06, 0], fov: 36 },
   },
 };
 

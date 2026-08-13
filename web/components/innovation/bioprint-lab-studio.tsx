@@ -242,7 +242,7 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
           printing={printing}
           compact
         />
-        <div className="absolute top-3 right-3 z-30 flex gap-2">
+        <div className="absolute top-14 right-3 z-40 flex gap-2">
           <Button
             size="sm"
             className="h-8 bg-emerald-400 text-teal-950 shadow-lg hover:bg-emerald-300"
@@ -257,26 +257,26 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Compact live status */}
-      <div className="flex flex-wrap items-center gap-3 text-sm">
+    <div className="space-y-5">
+      {/* API status strip */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm shadow-sm">
         {liveData?.live ? (
-          <Wifi className="h-4 w-4 text-emerald-600 shrink-0" />
+          <Wifi className="h-4 w-4 shrink-0 text-emerald-600" />
         ) : (
-          <WifiOff className="h-4 w-4 text-amber-600 shrink-0" />
+          <WifiOff className="h-4 w-4 shrink-0 text-amber-600" />
         )}
         <span className="font-medium text-stone-700">
           {liveLoading
-            ? "Syncing research APIs…"
+            ? "Syncing ClinicalTrials.gov + PubMed…"
             : liveData?.live
-              ? "ClinicalTrials.gov + PubMed connected"
+              ? "Live research APIs connected"
               : "Offline fallback data"}
         </span>
-        <div className="flex flex-wrap gap-2 ml-auto">
+        <div className="ml-auto flex flex-wrap gap-2">
           {kpiStats.slice(0, 4).map(([label, val]) => (
             <span
               key={label}
-              className="rounded-full border border-teal-900/10 bg-white px-3 py-1 text-xs font-medium text-stone-800 shadow-sm"
+              className="rounded-full border border-teal-900/10 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-800"
             >
               {label}: <strong>{val}</strong>
             </span>
@@ -284,99 +284,120 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
         </div>
       </div>
 
-      {/* HERO — full-width immersive 3D (primary experience) */}
-      <div className="relative overflow-hidden rounded-2xl md:rounded-3xl ring-1 ring-stone-200 shadow-2xl">
-        <Bioprint3DViewer
-          applicationId={appId}
-          totalLayers={app.layers}
-          currentLayer={layer}
-          printing={printing}
-          immersive
-        />
-
-        {/* Floating controls on 3D stage */}
-        <div className="absolute bottom-4 left-4 right-4 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/75 px-4 py-3 backdrop-blur-sm">
-          <div className="flex flex-wrap gap-2">
-            {BIOPRINT_APPLICATIONS.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => {
-                  setAppId(a.id);
-                  reset();
-                  pushLog(`Profile → ${a.name}`, "info");
-                }}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                  appId === a.id
-                    ? "bg-emerald-400 text-teal-950"
-                    : "bg-white/10 text-teal-100 hover:bg-white/20"
-                }`}
-              >
-                {a.name.split(" ")[0]}
-              </button>
-            ))}
+      {/* Enterprise split console: controls left · viewport right */}
+      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xl ring-1 ring-stone-200/80 lg:grid lg:grid-cols-[minmax(300px,380px)_1fr] lg:min-h-[580px]">
+        {/* Left — mission + operator panel */}
+        <div className="flex flex-col border-b border-stone-200 lg:border-b-0 lg:border-r">
+          <div className="border-b border-stone-100 bg-[#eef6f2] px-5 py-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-teal-800">
+              Bioprint intelligence console
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-stone-700">
+              Living cells are becoming the building blocks of medical innovation. By depositing
+              cell-rich bioinks layer by layer, bioprinting creates three-dimensional tissue
+              structures for regenerative medicine, drug testing, and personalized care.
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-stone-500">
+              While fully functional organs remain a future goal, the technology is steadily
+              reshaping how human tissue can be studied, tested, and restored.
+            </p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              className="bg-emerald-400 text-teal-950 hover:bg-emerald-300"
-              onClick={printing ? () => { setPrinting(false); void syncJob("pause", layer); } : startPrint}
-            >
-              {printing ? <Pause className="mr-1 h-4 w-4" /> : <Play className="mr-1 h-4 w-4" />}
-              {printing ? "Pause" : "Start bioprint"}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-white/25 bg-transparent text-white hover:bg-white/10"
-              onClick={reset}
-            >
-              <RotateCcw className="mr-1 h-4 w-4" /> Reset
-            </Button>
-          </div>
-        </div>
-      </div>
 
-      {/* Telemetry strip — white, not green */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <MetricTile label="Viability" value={viability} unit="%" icon={Activity} accent="text-emerald-600" />
-        <MetricTile label="Flow rate" value={flowRate} unit="µL/s" icon={Beaker} />
-        <MetricTile label="Integrity" value={integrity} unit="%" icon={Layers} />
-        <MetricTile label="Nozzle" value={printing ? "37.2" : "—"} unit="°C" icon={Thermometer} />
-      </div>
-
-      {/* Details panel */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-teal-800">Selected construct</p>
-          <p className="mt-2 font-medium text-stone-900">{app.name}</p>
-          <p className="mt-1 text-sm text-stone-600">{app.tissue}</p>
-          <p className="mt-2 text-xs text-stone-500">{app.bioink}</p>
-          <p className="mt-2 text-xs text-stone-400">{app.clinicalPath}</p>
-        </div>
-        <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-          <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-teal-800">
-            <Cpu className="h-3.5 w-3.5" /> Live event log
-          </p>
-          <div className="max-h-[120px] space-y-1 overflow-y-auto font-mono text-[11px]">
-            {logs.length === 0 && (
-              <p className="text-stone-400">Press Start bioprint to begin…</p>
-            )}
-            {logs.map((entry) => (
-              <div
-                key={entry.id}
-                className={`rounded px-2 py-1 ${
-                  entry.level === "ok"
-                    ? "bg-emerald-50 text-emerald-800"
-                    : entry.level === "warn"
-                      ? "bg-amber-50 text-amber-800"
-                      : "bg-stone-50 text-stone-700"
-                }`}
-              >
-                <span className="text-stone-400">{entry.time}</span> {entry.message}
+          <div className="flex flex-1 flex-col gap-4 p-5">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-500">
+                Tissue profile
+              </p>
+              <div className="mt-2 space-y-1.5">
+                {BIOPRINT_APPLICATIONS.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => {
+                      setAppId(a.id);
+                      reset();
+                      pushLog(`Profile → ${a.name}`, "info");
+                    }}
+                    className={`w-full rounded-lg border px-3 py-2.5 text-left transition ${
+                      appId === a.id
+                        ? "border-teal-600 bg-teal-50 ring-1 ring-teal-600/20"
+                        : "border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-stone-900">{a.name}</p>
+                    <p className="mt-0.5 text-xs text-stone-500">{a.tissue}</p>
+                  </button>
+                ))}
               </div>
-            ))}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                className="flex-1 bg-teal-900 text-white hover:bg-teal-800"
+                onClick={printing ? () => { setPrinting(false); void syncJob("pause", layer); } : startPrint}
+              >
+                {printing ? <Pause className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4" />}
+                {printing ? "Pause deposition" : "Start bioprint"}
+              </Button>
+              <Button variant="outline" onClick={reset}>
+                <RotateCcw className="mr-1.5 h-4 w-4" /> Reset
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <MetricTile label="Viability" value={viability} unit="%" icon={Activity} accent="text-emerald-600" />
+              <MetricTile label="Flow" value={flowRate} unit="µL/s" icon={Beaker} />
+              <MetricTile label="Integrity" value={integrity} unit="%" icon={Layers} />
+              <MetricTile label="Nozzle" value={printing ? "37.2" : "—"} unit="°C" icon={Thermometer} />
+            </div>
+
+            <div className="mt-auto rounded-lg border border-stone-200 bg-stone-50 p-3">
+              <p className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-teal-800">
+                <Cpu className="h-3.5 w-3.5" /> Event log
+              </p>
+              <div className="max-h-[100px] space-y-1 overflow-y-auto font-mono text-[10px]">
+                {logs.length === 0 && (
+                  <p className="text-stone-400">Press Start bioprint to begin…</p>
+                )}
+                {logs.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className={`rounded px-2 py-0.5 ${
+                      entry.level === "ok"
+                        ? "bg-emerald-100/80 text-emerald-800"
+                        : entry.level === "warn"
+                          ? "bg-amber-100/80 text-amber-800"
+                          : "text-stone-600"
+                    }`}
+                  >
+                    <span className="text-stone-400">{entry.time}</span> {entry.message}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+        </div>
+
+        {/* Right — dedicated 3D viewport */}
+        <div className="relative min-h-[420px] lg:min-h-0">
+          <Bioprint3DViewer
+            applicationId={appId}
+            totalLayers={app.layers}
+            currentLayer={layer}
+            printing={printing}
+            className="h-full"
+          />
+        </div>
+      </div>
+
+      {/* Construct detail */}
+      <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wider text-teal-800">Active construct</p>
+        <p className="mt-2 text-lg font-medium text-stone-900">{app.name}</p>
+        <p className="mt-1 text-sm text-stone-600">{app.tissue}</p>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-500">
+          <span className="rounded-full bg-stone-100 px-3 py-1">{app.bioink}</span>
+          <span className="rounded-full bg-stone-100 px-3 py-1">{app.clinicalPath}</span>
         </div>
       </div>
 
@@ -456,16 +477,10 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
         </div>
       )}
 
-      {/* Regulatory + copy */}
-      <div className="rounded-2xl bg-[#eef6f2] px-6 py-8 ring-1 ring-teal-900/10 md:px-10">
-        <p className="text-lg leading-relaxed text-stone-700">
-          Living cells are becoming the building blocks of medical innovation. By depositing
-          cell-rich bioinks layer by layer, bioprinting creates three-dimensional tissue
-          structures for regenerative medicine, drug testing, and personalized care. While fully
-          functional organs remain a future goal, the technology is steadily reshaping how human
-          tissue can be studied, tested, and restored.
-        </p>
-        <div className="mt-5 flex flex-wrap gap-2">
+      {/* Regulatory pathways */}
+      <div className="rounded-2xl border border-teal-900/10 bg-[#eef6f2] px-6 py-6 md:px-8">
+        <p className="text-xs font-semibold uppercase tracking-wider text-teal-800">Regulatory pathways</p>
+        <div className="mt-4 flex flex-wrap gap-2">
           {BIOPRINT_ENTERPRISE_STATS.regulatoryPathways.map((r) => (
             <span
               key={r}

@@ -238,6 +238,7 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
         <div className="absolute inset-0 bg-[#0a2824]" />
         <div className="relative grid h-full min-h-[280px] grid-rows-[1fr_auto]">
           <Bioprint3DViewer
+            applicationId={appId}
             totalLayers={app.layers}
             currentLayer={printing ? layer : Math.min(6, app.layers)}
             printing={printing}
@@ -327,7 +328,7 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-teal-200">
-                Enterprise bioprint lab · aw-bioprint-v2 · API-driven
+                Enterprise bioprint lab · 3D human anatomy · API-driven
               </p>
               <h2 className="mt-1 font-serif text-2xl text-white md:text-3xl">
                 Bioprinting reshapes how tissue is studied, tested, and restored
@@ -365,6 +366,7 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
           {/* Visual + telemetry */}
           <div className="border-b border-white/10 lg:border-b-0 lg:border-r">
             <Bioprint3DViewer
+              applicationId={appId}
               totalLayers={app.layers}
               currentLayer={layer}
               printing={printing}

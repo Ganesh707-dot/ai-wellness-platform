@@ -22,7 +22,7 @@ export default function InnovationPage() {
     <div className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_20%_0%,#cfe8df_0%,transparent_50%),radial-gradient(ellipse_at_80%_20%,#e8dcc8_0%,transparent_45%)]" />
 
-      <section className="relative mx-auto max-w-7xl px-4 pb-8 pt-12">
+      <section className="relative mx-auto w-full max-w-6xl px-4 pb-8 pt-12">
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-800">
           Future of care · Bio-innovation
         </p>
@@ -35,7 +35,7 @@ export default function InnovationPage() {
         </p>
       </section>
 
-      <section className="relative mx-auto max-w-7xl px-4 pb-20">
+      <section className="relative mx-auto w-full max-w-6xl px-4 pb-20">
         <BioprintLabStudio />
 
         <div className="mt-14 grid gap-6 md:grid-cols-3">

@@ -45,6 +45,10 @@ type LiveDataPayload = {
     pubMedArticles: number;
     tissueEngineeringTrials: number;
   };
+  organResearch?: {
+    brain: { pubMedArticles: number; label: string };
+    kidney: { pubMedArticles: number; label: string };
+  };
   recentTrials: LiveTrial[];
 };
 
@@ -391,6 +395,16 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
 
             <p className="text-[10px] leading-snug text-stone-500">
               <strong className="text-stone-700">{app.name}</strong> — {app.tissue}
+              {liveData?.organResearch && appId === "brain" && (
+                <span className="mt-1 block text-teal-700">
+                  PubMed: {liveData.organResearch.brain.pubMedArticles.toLocaleString()} articles
+                </span>
+              )}
+              {liveData?.organResearch && appId === "kidney" && (
+                <span className="mt-1 block text-teal-700">
+                  PubMed: {liveData.organResearch.kidney.pubMedArticles.toLocaleString()} articles
+                </span>
+              )}
             </p>
           </aside>
         </div>

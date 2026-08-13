@@ -58,6 +58,26 @@ export const BIOPRINT_APPLICATIONS: BioprintApplication[] = [
     useCase: "Personalized care",
     clinicalPath: "Post-MI recovery · precision graft planning",
   },
+  {
+    id: "brain",
+    name: "Neural construct",
+    tissue: "Cortical organoid · neural tissue",
+    bioink: "Matrigel · iPSC-neural progenitors",
+    layers: 22,
+    viabilityTarget: 93,
+    useCase: "Neuro research",
+    clinicalPath: "Stroke recovery · neurodegeneration models",
+  },
+  {
+    id: "kidney",
+    name: "Renal scaffold",
+    tissue: "Nephron tubule · kidney organoid",
+    bioink: "GelMA · Kidney organoids",
+    layers: 26,
+    viabilityTarget: 91,
+    useCase: "Organ replacement research",
+    clinicalPath: "CKD modeling · transplant scaffold prep",
+  },
 ];
 
 export const BIOPRINT_PIPELINE: PipelineStage[] = [

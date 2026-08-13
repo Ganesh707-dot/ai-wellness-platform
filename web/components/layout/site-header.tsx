@@ -20,7 +20,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-stone-200/70 bg-[#f4f7f4]/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3.5">
         <Link
           href={logoHref}
           className="font-[family-name:var(--font-display)] text-2xl tracking-tight text-teal-950"

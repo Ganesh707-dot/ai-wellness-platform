@@ -1,6 +1,6 @@
 import type { BioprintApplication } from "@/lib/bioprint-data";
 
-export type OrganModelKind = "human" | "heart" | "knee" | "liver";
+export type OrganModelKind = "human" | "heart" | "knee" | "liver" | "brain" | "kidney";
 
 /** 3D focus region per bioprint application. */
 export type AnatomyRegion = {
@@ -64,6 +64,28 @@ export const ANATOMY_REGIONS: Record<string, AnatomyRegion> = {
     tissueLabel: "Patient-derived cardiomyocytes",
     camera: { position: [0.28, 0.18, 0.98], target: [0, 0.06, 0], fov: 36 },
   },
+  brain: {
+    id: "cortex",
+    label: "Cortical organoid · neural bioprint",
+    organ: "brain",
+    position: [0, 0.12, 0.16],
+    radius: 0.13,
+    color: "#f9a8d4",
+    emissive: "#ec4899",
+    tissueLabel: "iPSC-derived cortical organoid",
+    camera: { position: [0.3, 0.2, 0.95], target: [0, 0.08, 0], fov: 36 },
+  },
+  kidney: {
+    id: "nephron",
+    label: "Renal tubule scaffold · kidney bioprint",
+    organ: "kidney",
+    position: [0, 0.06, 0.14],
+    radius: 0.14,
+    color: "#fdba74",
+    emissive: "#f97316",
+    tissueLabel: "Nephron tubule organoid matrix",
+    camera: { position: [0.34, 0.16, 0.95], target: [0, 0.04, 0], fov: 36 },
+  },
 };
 
 export type BodyModelPayload = {
@@ -93,7 +115,7 @@ export function buildBodyModelPayload(
     application.layers > 0 ? Math.min(1, Math.max(0, layer / application.layers)) : 0;
 
   return {
-    modelVersion: "aw-anatomy-v2",
+    modelVersion: "aw-anatomy-v3",
     viewer: "organ-hero-3d",
     applicationId: application.id,
     applicationName: application.name,

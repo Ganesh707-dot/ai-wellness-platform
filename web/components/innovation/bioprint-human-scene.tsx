@@ -286,6 +286,94 @@ function ProceduralHuman({ region, progress, printing }: SceneProps) {
   );
 }
 
+function BrainOrgan({ progress, printing, region }: SceneProps) {
+  const cortex = { color: "#fda4af", roughness: 0.62, metalness: 0.02 };
+  const deep = { color: "#fb7185", roughness: 0.58 };
+  return (
+    <group>
+      <mesh position={[-0.14, 0.08, 0]} scale={[0.95, 1.05, 0.88]}>
+        <sphereGeometry args={[0.22, 40, 40]} />
+        <meshStandardMaterial {...cortex} />
+      </mesh>
+      <mesh position={[0.14, 0.08, 0]} scale={[0.95, 1.05, 0.88]}>
+        <sphereGeometry args={[0.22, 40, 40]} />
+        <meshStandardMaterial {...cortex} />
+      </mesh>
+      <mesh position={[0, 0.1, 0.02]} scale={[1.05, 0.85, 0.75]}>
+        <sphereGeometry args={[0.18, 32, 32]} />
+        <meshStandardMaterial {...deep} />
+      </mesh>
+      <mesh position={[0, -0.12, -0.06]} scale={[1.1, 0.65, 0.9]}>
+        <sphereGeometry args={[0.14, 28, 28]} />
+        <meshStandardMaterial color="#f472b6" roughness={0.55} />
+      </mesh>
+      <mesh position={[0, -0.28, -0.02]}>
+        <capsuleGeometry args={[0.05, 0.14, 10, 16]} />
+        <meshStandardMaterial color="#fce7f3" roughness={0.45} />
+      </mesh>
+      {(
+        [
+          [-0.08, 0.18, 0.1],
+          [0.1, 0.16, 0.11],
+          [0, 0.2, 0.08],
+          [-0.12, 0.04, 0.12],
+          [0.12, 0.02, 0.1],
+        ] as const
+      ).map(([x, y, z], i) => (
+        <mesh key={i} position={[x, y, z]}>
+          <sphereGeometry args={[0.04, 14, 14]} />
+          <meshStandardMaterial color="#fbcfe8" roughness={0.5} />
+        </mesh>
+      ))}
+      <DepositionGlow
+        position={region.position}
+        radius={region.radius}
+        color={region.color}
+        emissive={region.emissive}
+        progress={progress}
+        printing={printing}
+      />
+    </group>
+  );
+}
+
+function KidneyOrgan({ progress, printing, region }: SceneProps) {
+  const renal = { color: "#92400e", roughness: 0.48, metalness: 0.04 };
+  const cortex = { color: "#b45309", roughness: 0.42 };
+  return (
+    <group rotation={[0, 0.35, 0]}>
+      <mesh position={[-0.12, 0.04, 0]} scale={[0.55, 0.85, 0.7]}>
+        <sphereGeometry args={[0.28, 40, 40]} />
+        <meshStandardMaterial {...renal} />
+      </mesh>
+      <mesh position={[0.12, 0.04, 0]} scale={[0.55, 0.85, 0.7]}>
+        <sphereGeometry args={[0.28, 40, 40]} />
+        <meshStandardMaterial {...renal} />
+      </mesh>
+      <mesh position={[0, 0.06, 0.08]} scale={[0.35, 0.55, 0.25]}>
+        <sphereGeometry args={[0.2, 24, 24]} />
+        <meshStandardMaterial {...cortex} />
+      </mesh>
+      <mesh position={[0.18, -0.02, 0.02]} rotation={[0, 0, -0.5]}>
+        <capsuleGeometry args={[0.035, 0.18, 10, 16]} />
+        <meshStandardMaterial color="#d97706" roughness={0.4} />
+      </mesh>
+      <mesh position={[-0.18, -0.02, -0.02]} rotation={[0, 0, 0.5]}>
+        <capsuleGeometry args={[0.03, 0.14, 10, 16]} />
+        <meshStandardMaterial color="#d97706" roughness={0.4} />
+      </mesh>
+      <DepositionGlow
+        position={region.position}
+        radius={region.radius}
+        color={region.color}
+        emissive={region.emissive}
+        progress={progress}
+        printing={printing}
+      />
+    </group>
+  );
+}
+
 function OrganSwitch(props: SceneProps) {
   switch (props.region.organ) {
     case "heart":
@@ -294,6 +382,10 @@ function OrganSwitch(props: SceneProps) {
       return <LiverOrgan {...props} />;
     case "knee":
       return <KneeOrgan {...props} />;
+    case "brain":
+      return <BrainOrgan {...props} />;
+    case "kidney":
+      return <KidneyOrgan {...props} />;
     default:
       return <ProceduralHuman {...props} />;
   }

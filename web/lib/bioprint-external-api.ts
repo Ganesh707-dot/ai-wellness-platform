@@ -27,6 +27,10 @@ export type BioprintLiveData = {
     pubMedArticles: number;
     tissueEngineeringTrials: number;
   };
+  organResearch: {
+    brain: { pubMedArticles: number; label: string };
+    kidney: { pubMedArticles: number; label: string };
+  };
   recentTrials: LiveTrial[];
   live: boolean;
   error?: string;
@@ -104,10 +108,12 @@ export async function fetchBioprintLiveData(): Promise<BioprintLiveData> {
   const fetchedAt = new Date().toISOString();
 
   try {
-    const [bioprintCt, tissueCt, pubMedCount] = await Promise.all([
+    const [bioprintCt, tissueCt, pubMedCount, brainPubMed, kidneyPubMed] = await Promise.all([
       fetchClinicalTrials("bioprinting OR 3D bioprinting OR bioink"),
       fetchClinicalTrials("regenerative medicine tissue engineering"),
       fetchPubMedCount("bioprinting AND regenerative medicine"),
+      fetchPubMedCount("brain organoid bioprinting"),
+      fetchPubMedCount("kidney bioprinting organoid"),
     ]);
 
     const recentTrials = (bioprintCt.studies ?? [])
@@ -133,6 +139,10 @@ export async function fetchBioprintLiveData(): Promise<BioprintLiveData> {
         pubMedArticles: pubMedCount,
         tissueEngineeringTrials: tissueCt.totalCount ?? 0,
       },
+      organResearch: {
+        brain: { pubMedArticles: brainPubMed, label: "Neural / brain organoid bioprint" },
+        kidney: { pubMedArticles: kidneyPubMed, label: "Renal / kidney scaffold bioprint" },
+      },
       recentTrials,
       live: true,
     };
@@ -149,6 +159,10 @@ export async function fetchBioprintLiveData(): Promise<BioprintLiveData> {
         recruitingTrials: 0,
         pubMedArticles: 0,
         tissueEngineeringTrials: 0,
+      },
+      organResearch: {
+        brain: { pubMedArticles: 0, label: "Neural / brain organoid bioprint" },
+        kidney: { pubMedArticles: 0, label: "Renal / kidney scaffold bioprint" },
       },
       recentTrials: [],
       live: false,

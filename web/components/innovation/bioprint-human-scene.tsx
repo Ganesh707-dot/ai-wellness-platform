@@ -1,13 +1,12 @@
 "use client";
 
-import { Suspense, useMemo, useRef, useState, useEffect } from "react";
+import { Component, useRef, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Float, OrbitControls, useGLTF } from "@react-three/drei";
+import { Float, OrbitControls } from "@react-three/drei";
 import type { Group, Mesh } from "three";
 import type { AnatomyRegion } from "@/lib/bioprint-anatomy";
 
-const HUMAN_GLB =
-  "https://vazxmixjsiawhamofees.supabase.co/storage/v1/object/public/models/man/man.glb";
+const SKIN = { color: "#d4a574", roughness: 0.55, metalness: 0.02 };
 
 type SceneProps = {
   region: AnatomyRegion;
@@ -162,25 +161,71 @@ function KneeOrgan({ progress, printing, region }: SceneProps) {
   );
 }
 
-function HumanModel({ region, progress, printing }: SceneProps) {
-  const { scene } = useGLTF(HUMAN_GLB);
-  const clone = useMemo(() => scene.clone(), [scene]);
+function ProceduralHuman({ region, progress, printing }: SceneProps) {
+  const group = useRef<Group>(null);
+  useFrame((state) => {
+    if (group.current && printing) {
+      group.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.25) * 0.06;
+    }
+  });
+
   return (
-    <group position={[0, -1.05, 0]} scale={1.05}>
-      <primitive object={clone} />
-      <DepositionGlow
-        position={region.position}
-        radius={region.radius}
-        color={region.color}
-        emissive={region.emissive}
-        progress={progress}
-        printing={printing}
-      />
+    <group ref={group} position={[0, -0.95, 0]} scale={1.05}>
+      <Float speed={1} rotationIntensity={0.04} floatIntensity={0.12}>
+        {/* Head */}
+        <mesh position={[0, 1.62, 0]}>
+          <sphereGeometry args={[0.17, 32, 32]} />
+          <meshStandardMaterial {...SKIN} />
+        </mesh>
+        {/* Neck */}
+        <mesh position={[0, 1.38, 0]}>
+          <capsuleGeometry args={[0.055, 0.1, 8, 16]} />
+          <meshStandardMaterial {...SKIN} />
+        </mesh>
+        {/* Torso */}
+        <mesh position={[0, 0.95, 0]} scale={[0.42, 0.55, 0.22]}>
+          <capsuleGeometry args={[0.5, 1, 12, 24]} />
+          <meshStandardMaterial {...SKIN} />
+        </mesh>
+        {/* Left arm (forearm graft zone) */}
+        <mesh position={[-0.38, 1.02, 0.04]} rotation={[0, 0, 0.35]}>
+          <capsuleGeometry args={[0.055, 0.38, 10, 20]} />
+          <meshStandardMaterial {...SKIN} />
+        </mesh>
+        <mesh position={[-0.52, 0.62, 0.06]} rotation={[0, 0, 0.15]}>
+          <capsuleGeometry args={[0.048, 0.32, 10, 20]} />
+          <meshStandardMaterial {...SKIN} />
+        </mesh>
+        {/* Right arm */}
+        <mesh position={[0.38, 1.02, 0]} rotation={[0, 0, -0.35]}>
+          <capsuleGeometry args={[0.055, 0.38, 10, 20]} />
+          <meshStandardMaterial {...SKIN} />
+        </mesh>
+        <mesh position={[0.52, 0.62, 0]} rotation={[0, 0, -0.15]}>
+          <capsuleGeometry args={[0.048, 0.32, 10, 20]} />
+          <meshStandardMaterial {...SKIN} />
+        </mesh>
+        {/* Legs */}
+        <mesh position={[-0.14, 0.28, 0]}>
+          <capsuleGeometry args={[0.075, 0.52, 12, 24]} />
+          <meshStandardMaterial {...SKIN} />
+        </mesh>
+        <mesh position={[0.14, 0.28, 0]}>
+          <capsuleGeometry args={[0.075, 0.52, 12, 24]} />
+          <meshStandardMaterial {...SKIN} />
+        </mesh>
+        <DepositionGlow
+          position={region.position}
+          radius={region.radius}
+          color={region.color}
+          emissive={region.emissive}
+          progress={progress}
+          printing={printing}
+        />
+      </Float>
     </group>
   );
 }
-
-useGLTF.preload(HUMAN_GLB);
 
 function OrganSwitch(props: SceneProps) {
   switch (props.region.organ) {
@@ -191,11 +236,7 @@ function OrganSwitch(props: SceneProps) {
     case "knee":
       return <KneeOrgan {...props} />;
     default:
-      return (
-        <Suspense fallback={null}>
-          <HumanModel {...props} />
-        </Suspense>
-      );
+      return <ProceduralHuman {...props} />;
   }
 }
 
@@ -225,6 +266,31 @@ function Scene({ region, progress, printing, immersive }: SceneProps) {
   );
 }
 
+class CanvasErrorBoundary extends Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    if (this.state.failed) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
+function WebGLFallback() {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#030a09] px-6 text-center">
+      <p className="text-sm font-medium text-teal-100">3D viewer unavailable</p>
+      <p className="text-xs text-teal-100/60">Your browser could not initialize WebGL. Try refreshing.</p>
+    </div>
+  );
+}
+
 export function BioprintHumanScene({
   region,
   progress,
@@ -235,14 +301,24 @@ export function BioprintHumanScene({
   const cam = region.camera;
 
   return (
-    <Canvas
-      shadows={!mobile}
-      camera={{ position: cam.position, fov: cam.fov }}
-      dpr={mobile ? [1, 1.25] : [1, 1.75]}
-      gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
-      style={{ width: "100%", height: "100%", touchAction: "none" }}
-    >
-      <Scene region={region} progress={progress} printing={printing} immersive={immersive} />
-    </Canvas>
+    <CanvasErrorBoundary fallback={<WebGLFallback />}>
+      <Canvas
+        shadows={!mobile}
+        camera={{ position: cam.position, fov: cam.fov }}
+        dpr={mobile ? [1, 1.25] : [1, 1.75]}
+        gl={{
+          antialias: true,
+          alpha: false,
+          powerPreference: "high-performance",
+          failIfMajorPerformanceCaveat: false,
+        }}
+        style={{ width: "100%", height: "100%", touchAction: "none" }}
+        onCreated={({ gl }) => {
+          gl.domElement.addEventListener("webglcontextlost", (e) => e.preventDefault(), false);
+        }}
+      >
+        <Scene region={region} progress={progress} printing={printing} immersive={immersive} />
+      </Canvas>
+    </CanvasErrorBoundary>
   );
 }

@@ -34,7 +34,7 @@ export function SiteHeader() {
               ? "Encounter CDS"
               : "Symptom Navigator"}
           </Link>
-          <Link href="/innovation" className="hidden hover:text-teal-900 md:inline">
+          <Link href="/innovation" className="hover:text-teal-900">
             Innovation
           </Link>
           <Link

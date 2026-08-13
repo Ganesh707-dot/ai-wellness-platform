@@ -2,8 +2,7 @@
 
 import {
   Component,
-  forwardRef,
-  useImperativeHandle,
+  useCallback,
   useRef,
   useState,
   useEffect,
@@ -294,7 +293,8 @@ function Scene({
   autoRotate,
   interactive = true,
   controlsRef,
-}: SceneProps) {
+  boundsRef,
+}: SceneProps & { boundsRef: React.RefObject<React.ComponentRef<typeof Bounds> | null> }) {
   const mobile = useIsMobile();
   const cam = region.camera;
 
@@ -315,7 +315,7 @@ function Scene({
         far={1.4}
         color="#000000"
       />
-      <Bounds fit clip observe margin={1.35}>
+      <Bounds ref={boundsRef} fit clip observe margin={1.35}>
         <Center>
           <OrganSwitch
             region={region}
@@ -381,80 +381,86 @@ type BioprintHumanSceneProps = {
   interactive?: boolean;
   width: number;
   height: number;
+  onControlsReady?: (handle: BioprintViewerHandle) => void;
 };
 
-export const BioprintHumanScene = forwardRef<BioprintViewerHandle, BioprintHumanSceneProps>(
-  function BioprintHumanScene(
-    { region, progress, printing, autoRotate = false, interactive = true, width, height },
-    ref
-  ) {
-    const mobile = useIsMobile();
-    const cam = region.camera;
-    const controlsRef = useRef<OrbitControlsImpl>(null);
-    const initialCam = useRef({ position: cam.position, target: cam.target, fov: cam.fov });
+export function BioprintHumanScene({
+  region,
+  progress,
+  printing,
+  autoRotate = false,
+  interactive = true,
+  width,
+  height,
+  onControlsReady,
+}: BioprintHumanSceneProps) {
+  const mobile = useIsMobile();
+  const cam = region.camera;
+  const controlsRef = useRef<OrbitControlsImpl>(null);
+  const boundsRef = useRef<React.ComponentRef<typeof Bounds>>(null);
 
-    useEffect(() => {
-      initialCam.current = { position: cam.position, target: cam.target, fov: cam.fov };
-    }, [cam]);
-
-    useImperativeHandle(ref, () => ({
-      resetView() {
-        const controls = controlsRef.current;
-        if (!controls) return;
-        const { camera } = controls;
-        camera.position.set(...initialCam.current.position);
-        controls.target.set(...initialCam.current.target);
-        if ("fov" in camera) {
-          camera.fov = initialCam.current.fov;
-          camera.updateProjectionMatrix();
-        }
+  const makeHandle = useCallback((): BioprintViewerHandle => ({
+    resetView() {
+      const b = boundsRef.current as { refresh?: () => { clip: () => { fit: () => void } } } | null;
+      b?.refresh?.().clip?.().fit?.();
+      const controls = controlsRef.current;
+      if (controls) {
+        controls.target.set(...region.camera.target);
         controls.update();
-      },
-      rotateLeft() {
-        const controls = controlsRef.current;
-        if (controls) orbitStep(controls, ROTATE_STEP);
-      },
-      rotateRight() {
-        const controls = controlsRef.current;
-        if (controls) orbitStep(controls, -ROTATE_STEP);
-      },
-      zoomIn() {
-        const controls = controlsRef.current;
-        if (controls) orbitStep(controls, 0, ZOOM_FACTOR);
-      },
-      zoomOut() {
-        const controls = controlsRef.current;
-        if (controls) orbitStep(controls, 0, 1 / ZOOM_FACTOR);
-      },
-    }));
+      }
+    },
+    rotateLeft() {
+      const controls = controlsRef.current;
+      if (controls) orbitStep(controls, ROTATE_STEP);
+    },
+    rotateRight() {
+      const controls = controlsRef.current;
+      if (controls) orbitStep(controls, -ROTATE_STEP);
+    },
+    zoomIn() {
+      const controls = controlsRef.current;
+      if (controls) orbitStep(controls, 0, ZOOM_FACTOR);
+    },
+    zoomOut() {
+      const controls = controlsRef.current;
+      if (controls) orbitStep(controls, 0, 1 / ZOOM_FACTOR);
+    },
+  }), [region.camera.target]);
 
-    return (
-      <CanvasErrorBoundary fallback={<WebGLFallback />}>
-        <Canvas
-          shadows={!mobile}
-          camera={{ position: cam.position, fov: cam.fov }}
-          dpr={mobile ? [1, 1.25] : [1, 2]}
-          gl={{
-            antialias: true,
-            alpha: false,
-            powerPreference: "high-performance",
-            failIfMajorPerformanceCaveat: false,
-          }}
-          style={{ display: "block", width, height }}
-          onCreated={({ gl }) => {
-            gl.domElement.addEventListener("webglcontextlost", (e) => e.preventDefault(), false);
-          }}
-        >
-          <Scene
-            region={region}
-            progress={progress}
-            printing={printing}
-            autoRotate={autoRotate}
-            interactive={interactive}
-            controlsRef={controlsRef}
-          />
-        </Canvas>
-      </CanvasErrorBoundary>
-    );
-  }
-);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      onControlsReady?.(makeHandle());
+    });
+    return () => cancelAnimationFrame(id);
+  }, [makeHandle, onControlsReady, region.id, width, height]);
+
+  return (
+    <CanvasErrorBoundary fallback={<WebGLFallback />}>
+      <Canvas
+        shadows={!mobile}
+        camera={{ position: cam.position, fov: cam.fov }}
+        dpr={mobile ? [1, 1.25] : [1, 2]}
+        gl={{
+          antialias: true,
+          alpha: false,
+          powerPreference: "high-performance",
+          failIfMajorPerformanceCaveat: false,
+        }}
+        style={{ display: "block", width, height }}
+        onCreated={({ gl }) => {
+          gl.domElement.addEventListener("webglcontextlost", (e) => e.preventDefault(), false);
+        }}
+      >
+        <Scene
+          region={region}
+          progress={progress}
+          printing={printing}
+          autoRotate={autoRotate}
+          interactive={interactive}
+          controlsRef={controlsRef}
+          boundsRef={boundsRef}
+        />
+      </Canvas>
+    </CanvasErrorBoundary>
+  );
+}

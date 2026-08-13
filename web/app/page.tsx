@@ -107,31 +107,28 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-teal-900/10 bg-[#0f3d38] text-teal-50">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 lg:grid-cols-2 lg:items-center">
+      <section className="border-y border-stone-200 bg-stone-50">
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-200">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-800">
               Regenerative frontier
             </p>
-            <h2 className="mt-4 font-serif text-3xl leading-snug text-white md:text-4xl">
-              Living cells are becoming the building blocks of medical innovation
+            <h2 className="mt-4 font-serif text-3xl leading-snug text-stone-900 md:text-4xl">
+              Interactive 3D bioprint lab
             </h2>
-            <p className="mt-5 text-base leading-relaxed text-teal-100/90">
-              By depositing cell-rich bioinks layer by layer, bioprinting creates
-              three-dimensional tissue structures for regenerative medicine, drug
-              testing, and personalized care. While fully functional organs remain
-              a future goal, the technology is steadily reshaping how human tissue
-              can be studied, tested, and restored.
+            <p className="mt-4 text-base leading-relaxed text-stone-600">
+              Explore organ-level 3D models — heart, liver, knee, and full-body graft
+              zones — with live deposition simulation powered by public research APIs.
             </p>
-            <Button asChild className="mt-8 bg-white text-teal-950 hover:bg-teal-50">
-              <Link href="/innovation">Explore bio-innovation →</Link>
+            <Button asChild className="mt-6 bg-teal-900 text-white hover:bg-teal-800">
+              <Link href="/innovation">Open full lab →</Link>
             </Button>
           </div>
-          <div className="relative min-h-[280px]">
+          <div className="relative min-h-[360px] sm:min-h-[420px]">
             <BioprintHomePreview />
             <Link
               href="/innovation"
-              className="absolute bottom-14 right-4 z-10 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-teal-950 shadow hover:bg-white"
+              className="absolute bottom-4 right-4 z-30 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-teal-950 shadow-lg ring-1 ring-stone-200 hover:bg-teal-50"
             >
               Full lab →
             </Link>

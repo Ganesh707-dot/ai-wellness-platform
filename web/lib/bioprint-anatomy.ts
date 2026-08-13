@@ -1,59 +1,74 @@
 import type { BioprintApplication } from "@/lib/bioprint-data";
 
-/** 3D body region targeted by each bioprint application (meter-scale human rig). */
+export type OrganModelKind = "human" | "heart" | "knee" | "liver";
+
+/** 3D focus region per bioprint application. */
 export type AnatomyRegion = {
   id: string;
   label: string;
-  /** Local position on human rig (Y up, origin at feet). */
+  organ: OrganModelKind;
   position: [number, number, number];
   radius: number;
   color: string;
   emissive: string;
   tissueLabel: string;
+  camera: {
+    position: [number, number, number];
+    target: [number, number, number];
+    fov: number;
+  };
 };
 
 export const ANATOMY_REGIONS: Record<string, AnatomyRegion> = {
   skin: {
     id: "left_forearm",
-    label: "Left forearm · dermal scaffold",
+    label: "Dermal scaffold · forearm graft zone",
+    organ: "human",
     position: [0.42, 1.08, 0.06],
     radius: 0.11,
     color: "#5eead4",
     emissive: "#2dd4bf",
     tissueLabel: "Epidermal + dermal matrix",
+    camera: { position: [0.4, 1.2, 2.1], target: [0, 0.95, 0], fov: 38 },
   },
   cartilage: {
     id: "left_knee",
-    label: "Left knee · hyaline cartilage",
-    position: [-0.14, 0.52, 0.08],
-    radius: 0.13,
+    label: "Hyaline cartilage · knee joint patch",
+    organ: "knee",
+    position: [0, 0, 0],
+    radius: 0.2,
     color: "#6ee7b7",
     emissive: "#34d399",
-    tissueLabel: "Hyaline cartilage patch",
+    tissueLabel: "Hyaline cartilage construct",
+    camera: { position: [0.55, 0.35, 1.4], target: [0, 0.15, 0], fov: 42 },
   },
   "organ-chip": {
     id: "liver",
-    label: "Hepatic region · organ-on-a-chip",
-    position: [0.12, 1.02, 0.12],
-    radius: 0.15,
-    color: "#a78bfa",
+    label: "Hepatic organ-on-a-chip · microfluidic model",
+    organ: "liver",
+    position: [0, 0.05, 0],
+    radius: 0.22,
+    color: "#c4b5fd",
     emissive: "#8b5cf6",
-    tissueLabel: "Microfluidic liver model",
+    tissueLabel: "Microfluidic liver spheroids",
+    camera: { position: [0.5, 0.45, 1.35], target: [0, 0.1, 0], fov: 40 },
   },
   cardiac: {
     id: "heart",
-    label: "Cardiac region · myocardial patch",
-    position: [0.04, 1.18, 0.18],
-    radius: 0.14,
+    label: "Myocardial patch · cardiac bioprint",
+    organ: "heart",
+    position: [0, 0, 0],
+    radius: 0.2,
     color: "#fca5a5",
-    emissive: "#f87171",
+    emissive: "#ef4444",
     tissueLabel: "Patient-derived cardiomyocytes",
+    camera: { position: [0.35, 0.25, 1.55], target: [0, 0.05, 0], fov: 40 },
   },
 };
 
 export type BodyModelPayload = {
   modelVersion: string;
-  viewer: "human-body-3d";
+  viewer: "organ-hero-3d";
   applicationId: string;
   applicationName: string;
   region: AnatomyRegion;
@@ -62,10 +77,6 @@ export type BodyModelPayload = {
     totalLayers: number;
     progress: number;
     status: "idle" | "printing" | "complete";
-  };
-  camera: {
-    position: [number, number, number];
-    target: [number, number, number];
   };
   live: boolean;
   fetchedAt: string;
@@ -82,8 +93,8 @@ export function buildBodyModelPayload(
     application.layers > 0 ? Math.min(1, Math.max(0, layer / application.layers)) : 0;
 
   return {
-    modelVersion: "aw-anatomy-v1",
-    viewer: "human-body-3d",
+    modelVersion: "aw-anatomy-v2",
+    viewer: "organ-hero-3d",
     applicationId: application.id,
     applicationName: application.name,
     region,
@@ -99,10 +110,6 @@ export function buildBodyModelPayload(
             : layer > 0
               ? "complete"
               : "idle",
-    },
-    camera: {
-      position: [0.6, 1.35, 2.4],
-      target: [0, 1.05, 0],
     },
     live: liveMeta.live,
     fetchedAt: liveMeta.fetchedAt,

@@ -69,10 +69,12 @@ function restoreCamera(
   cameraConfig: AnatomyRegion["camera"],
   camera: PerspectiveCamera
 ) {
+  const target = new Vector3(...cameraConfig.target);
   camera.position.set(...cameraConfig.position);
   camera.fov = cameraConfig.fov;
   camera.updateProjectionMatrix();
-  controls.target.set(...cameraConfig.target);
+  camera.lookAt(target);
+  controls.target.copy(target);
   controls.update();
 }
 
@@ -413,11 +415,13 @@ function OrganSwitch(props: SceneProps) {
 function CameraRig({ regionId, cameraConfig }: { regionId: string; cameraConfig: AnatomyRegion["camera"] }) {
   const { camera } = useThree();
   useEffect(() => {
+    const target = new Vector3(...cameraConfig.target);
     camera.position.set(...cameraConfig.position);
     if ("fov" in camera) {
       camera.fov = cameraConfig.fov;
       camera.updateProjectionMatrix();
     }
+    camera.lookAt(target);
   }, [camera, regionId, cameraConfig]);
   return null;
 }
@@ -549,8 +553,7 @@ export function BioprintHumanScene({
       if (controls) {
         restoreCamera(controls, region.camera, controls.object as PerspectiveCamera);
       }
-      const b = boundsRef.current as { refresh?: () => { clip: () => { fit: () => void } } } | null;
-      requestAnimationFrame(() => b?.refresh?.().clip?.().fit?.());
+      // Keep curated per-tissue framing — do not re-run Bounds.fit (zooms to max/clips organ).
     },
     rotateLeft() {
       const controls = controlsRef.current;

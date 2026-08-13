@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
   Hand,
   Maximize2,
@@ -17,6 +17,10 @@ import { BioprintHumanScene, type BioprintViewerHandle } from "@/components/inno
 
 export const VIEWPORT_HEIGHT_COMPACT = 380;
 export const VIEWPORT_HEIGHT_DEFAULT = 520;
+
+export type Bioprint3DViewerHandle = {
+  resetView: () => void;
+};
 
 type Bioprint3DViewerProps = {
   applicationId: string;
@@ -60,7 +64,9 @@ function DockBtn({
   );
 }
 
-export function Bioprint3DViewer({
+export const Bioprint3DViewer = forwardRef<Bioprint3DViewerHandle, Bioprint3DViewerProps>(
+function Bioprint3DViewer(
+  {
   applicationId,
   totalLayers,
   currentLayer,
@@ -68,7 +74,9 @@ export function Bioprint3DViewer({
   compact = false,
   fillHeight = false,
   className = "",
-}: Bioprint3DViewerProps) {
+}: Bioprint3DViewerProps,
+  ref
+) {
   const shellRef = useRef<HTMLDivElement>(null);
   const canvasHostRef = useRef<HTMLDivElement>(null);
   const viewerApiRef = useRef<BioprintViewerHandle | null>(null);
@@ -88,6 +96,10 @@ export function Bioprint3DViewer({
   const handleControlsReady = useCallback((handle: BioprintViewerHandle) => {
     viewerApiRef.current = handle;
   }, []);
+
+  useImperativeHandle(ref, () => ({
+    resetView: () => viewerApiRef.current?.resetView(),
+  }), []);
 
   const release = useCallback(() => setEngaged(false), []);
 
@@ -218,19 +230,19 @@ export function Bioprint3DViewer({
       <footer className="relative z-30 shrink-0 border-t border-white/10 bg-[#0c1513] px-2 py-2">
         <div className="flex flex-wrap items-center justify-center gap-1 sm:justify-between">
           <div className="flex flex-wrap items-center justify-center gap-1">
-            <DockBtn label="Rotate left" onClick={() => api()?.rotateLeft()}>
+            <DockBtn label="Rotate left" onClick={() => { api()?.rotateLeft(); }}>
               <RotateCcw className="h-4 w-4" />
             </DockBtn>
-            <DockBtn label="Rotate right" onClick={() => api()?.rotateRight()}>
+            <DockBtn label="Rotate right" onClick={() => { api()?.rotateRight(); }}>
               <RotateCw className="h-4 w-4" />
             </DockBtn>
-            <DockBtn label="Zoom in" onClick={() => api()?.zoomIn()}>
+            <DockBtn label="Zoom in" onClick={() => { api()?.zoomIn(); }}>
               <Plus className="h-4 w-4" />
             </DockBtn>
-            <DockBtn label="Zoom out" onClick={() => api()?.zoomOut()}>
+            <DockBtn label="Zoom out" onClick={() => { api()?.zoomOut(); }}>
               <Minus className="h-4 w-4" />
             </DockBtn>
-            <DockBtn label="Reset view" onClick={() => api()?.resetView()}>
+            <DockBtn label="Reset view" onClick={() => { api()?.resetView(); }}>
               <Rotate3d className="h-4 w-4" />
               <span className="hidden sm:inline">Reset</span>
             </DockBtn>
@@ -253,4 +265,6 @@ export function Bioprint3DViewer({
       </footer>
     </div>
   );
-}
+});
+
+Bioprint3DViewer.displayName = "Bioprint3DViewer";

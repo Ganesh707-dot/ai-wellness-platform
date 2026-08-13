@@ -24,15 +24,27 @@ export default function InnovationPage() {
 
       <section className="relative mx-auto w-full max-w-6xl px-4 pb-8 pt-12">
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-800">
-          Future of care · Bio-innovation
+          Hospital-grade · Regenerative medicine
         </p>
         <h1 className="mt-4 max-w-4xl font-serif text-4xl leading-tight text-stone-900 md:text-5xl">
-          Enterprise bioprint lab
+          Enterprise bioprint command center
         </h1>
         <p className="mt-4 max-w-2xl text-stone-600">
-          Operator console with live anatomy viewport — switch tissue profiles, run deposition
-          simulations, and trace the clinical pipeline with free research APIs.
+          Live 3D anatomy viewport with API-backed deposition telemetry — designed for clinical
+          pipeline review, trial screening, and scenario-based technical interviews.
         </p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {["GMP-ready workflow", "ClinicalTrials.gov sync", "PubMed research API", "Layer-by-layer 3D"].map(
+            (tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-teal-900/15 bg-white/80 px-3 py-1 text-xs font-medium text-teal-900"
+              >
+                {tag}
+              </span>
+            )
+          )}
+        </div>
       </section>
 
       <section className="relative mx-auto w-full max-w-6xl px-4 pb-20">

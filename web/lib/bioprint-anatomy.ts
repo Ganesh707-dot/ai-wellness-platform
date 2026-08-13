@@ -100,6 +100,15 @@ export type BodyModelPayload = {
     progress: number;
     status: "idle" | "printing" | "complete";
   };
+  printResults: {
+    depositedVolumeUl: number;
+    layerHeightMm: number;
+    crosslinkPct: number | null;
+    constructQuality: "idle" | "forming" | "acceptable" | "clinical-grade";
+    meshProgress: number;
+    organ: OrganModelKind;
+    regionLabel: string;
+  };
   live: boolean;
   fetchedAt: string;
 };
@@ -132,6 +141,22 @@ export function buildBodyModelPayload(
             : layer > 0
               ? "complete"
               : "idle",
+    },
+    printResults: {
+      depositedVolumeUl: Math.round(layer * 4.2 * 10) / 10,
+      layerHeightMm: 0.05,
+      crosslinkPct: layer > 0 ? Math.min(99, 78 + progress * 20) : null,
+      constructQuality:
+        layer === 0
+          ? "idle"
+          : progress >= 1
+            ? "clinical-grade"
+            : progress > 0.5
+              ? "acceptable"
+              : "forming",
+      meshProgress: progress,
+      organ: region.organ,
+      regionLabel: region.label,
     },
     live: liveMeta.live,
     fetchedAt: liveMeta.fetchedAt,

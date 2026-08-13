@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BIOPRINT_APPLICATIONS } from "@/lib/bioprint-data";
+import { ANATOMY_REGIONS, buildBodyModelPayload } from "@/lib/bioprint-anatomy";
 import { fetchBioprintLiveData } from "@/lib/bioprint-external-api";
 
 type JobAction = "start" | "pause" | "reset";
@@ -28,6 +29,15 @@ export async function POST(req: NextRequest) {
   const progress = app.layers > 0 ? layer / app.layers : 0;
   const viability = (88 + progress * (app.viabilityTarget - 88)).toFixed(1);
   const integrity = layer > 0 ? Math.min(99.2, 92 + progress * 7).toFixed(1) : "—";
+  const region = ANATOMY_REGIONS[app.id] ?? ANATOMY_REGIONS.skin;
+  const printing = action === "start" && layer < app.layers;
+
+  const bodyModel = buildBodyModelPayload(
+    app,
+    layer,
+    printing,
+    { live: live.live, fetchedAt: live.fetchedAt }
+  );
 
   return NextResponse.json({
     jobId: `job-${app.id}-${Date.now()}`,
@@ -37,9 +47,9 @@ export async function POST(req: NextRequest) {
       layer,
       totalLayers: app.layers,
       viability: parseFloat(viability),
-      flowRateUlS: action === "start" && layer < app.layers ? 11.5 + progress * 2 : 0,
+      flowRateUlS: printing ? 11.5 + progress * 2 + Math.sin(layer) * 0.3 : 0,
       integrityPct: integrity === "—" ? null : parseFloat(integrity),
-      nozzleTempC: action === "start" && layer < app.layers ? 37.2 : null,
+      nozzleTempC: printing ? 36.8 + progress * 0.6 : null,
       status:
         action === "reset"
           ? "idle"
@@ -47,8 +57,29 @@ export async function POST(req: NextRequest) {
             ? "maturation"
             : action === "pause"
               ? "paused"
-              : "printing",
+              : printing
+                ? "printing"
+                : "idle",
     },
+    printResults: {
+      depositedVolumeUl: Math.round(layer * 4.2 * 10) / 10,
+      layerHeightMm: 0.05,
+      crosslinkPct: layer > 0 ? Math.min(99, 78 + progress * 20).toFixed(1) : null,
+      constructQuality:
+        action === "reset" || layer === 0
+          ? "idle"
+          : progress >= 1
+            ? "clinical-grade"
+            : progress > 0.5
+              ? "acceptable"
+              : "forming",
+      meshProgress: progress,
+      organ: region.organ,
+      regionLabel: region.label,
+      tissueLabel: region.tissueLabel,
+      deposition: bodyModel.deposition,
+    },
+    bodyModel,
     liveContext: {
       bioprintTrials: live.stats.bioprintTrials,
       pubMedArticles: live.stats.pubMedArticles,

@@ -3,16 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  Activity,
-  Beaker,
+  ChevronLeft,
+  ChevronRight,
   Cpu,
-  ExternalLink,
-  Layers,
   Pause,
   Play,
   RotateCcw,
   Sparkles,
-  Thermometer,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -22,7 +19,16 @@ import {
   BIOPRINT_ENTERPRISE_STATS,
   BIOPRINT_PIPELINE,
 } from "@/lib/bioprint-data";
-import { Bioprint3DViewer } from "@/components/innovation/bioprint-3d-viewer";
+import type { BodyModelPayload } from "@/lib/bioprint-anatomy";
+import {
+  Bioprint3DViewer,
+  type Bioprint3DViewerHandle,
+} from "@/components/innovation/bioprint-3d-viewer";
+import {
+  BioprintEnterpriseTelemetry,
+  type DepositionState,
+  type PrintTelemetry,
+} from "@/components/innovation/bioprint-enterprise-telemetry";
 
 type LogEntry = { id: number; time: string; message: string; level: "info" | "ok" | "warn" };
 
@@ -60,46 +66,30 @@ function nowStamp() {
   });
 }
 
-function MetricTile({
-  label,
-  value,
-  unit,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: string;
-  unit?: string;
-  icon: typeof Activity;
-  accent?: string;
-}) {
-  return (
-    <div className="rounded-xl border border-stone-200 bg-white p-3 shadow-sm">
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-stone-500">
-        <Icon className="h-3.5 w-3.5" />
-        {label}
-      </div>
-      <p className={`mt-1 font-mono text-lg font-semibold ${accent ?? "text-stone-900"}`}>
-        {value}
-        {unit && <span className="ml-1 text-xs font-normal text-stone-500">{unit}</span>}
-      </p>
-    </div>
-  );
-}
+const DEFAULT_TELEMETRY: PrintTelemetry = {
+  viability: 91.2,
+  flowRateUlS: 0,
+  integrityPct: null,
+  nozzleTempC: null,
+  layer: 0,
+  totalLayers: 24,
+  status: "idle",
+};
 
 export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
+  const viewerRef = useRef<Bioprint3DViewerHandle>(null);
   const [appId, setAppId] = useState(BIOPRINT_APPLICATIONS[0].id);
   const [stageId, setStageId] = useState("deposition");
   const [printing, setPrinting] = useState(false);
   const [layer, setLayer] = useState(0);
-  const [headX, setHeadX] = useState(50);
-  const [headY, setHeadY] = useState(35);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [tick, setTick] = useState(0);
   const [liveData, setLiveData] = useState<LiveDataPayload | null>(null);
   const [liveLoading, setLiveLoading] = useState(true);
+  const [telemetry, setTelemetry] = useState<PrintTelemetry>(DEFAULT_TELEMETRY);
+  const [bodyModel, setBodyModel] = useState<BodyModelPayload | null>(null);
+  const [constructQuality, setConstructQuality] = useState<string>("idle");
   const logId = useRef(0);
-  const jobIdRef = useRef<string | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
 
   const app = useMemo(
     () => BIOPRINT_APPLICATIONS.find((a) => a.id === appId) ?? BIOPRINT_APPLICATIONS[0],
@@ -140,7 +130,22 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
           body: JSON.stringify({ action, applicationId: appId, layer: currentLayer }),
         });
         const data = await res.json();
-        if (data.jobId) jobIdRef.current = data.jobId;
+        if (data.jobId) setJobId(data.jobId);
+        if (data.telemetry) {
+          setTelemetry({
+            viability: data.telemetry.viability,
+            flowRateUlS: data.telemetry.flowRateUlS,
+            integrityPct: data.telemetry.integrityPct,
+            nozzleTempC: data.telemetry.nozzleTempC,
+            layer: data.telemetry.layer,
+            totalLayers: data.telemetry.totalLayers,
+            status: data.telemetry.status,
+          });
+        }
+        if (data.printResults?.constructQuality) {
+          setConstructQuality(data.printResults.constructQuality);
+        }
+        if (data.bodyModel) setBodyModel(data.bodyModel);
         return data;
       } catch {
         return null;
@@ -149,14 +154,61 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
     [appId]
   );
 
+  const fetchBodyModel = useCallback(async (currentLayer: number, isPrinting: boolean) => {
+    try {
+      const params = new URLSearchParams({
+        applicationId: appId,
+        layer: String(currentLayer),
+        printing: String(isPrinting),
+      });
+      const res = await fetch(`/api/innovation/body-model?${params}`);
+      const data = (await res.json()) as BodyModelPayload;
+      setBodyModel(data);
+      if (data.printResults?.constructQuality) {
+        setConstructQuality(data.printResults.constructQuality);
+      }
+    } catch {
+      /* keep last payload */
+    }
+  }, [appId]);
+
+  useEffect(() => {
+    void fetchBodyModel(layer, printing);
+  }, [appId, layer, printing, fetchBodyModel]);
+
   const reset = useCallback(() => {
     setPrinting(false);
     setLayer(0);
-    setHeadX(50);
-    setHeadY(35);
+    setConstructQuality("idle");
+    setJobId(null);
+    viewerRef.current?.resetView();
     void syncJob("reset", 0);
-    pushLog("Print cycle reset — awaiting operator command", "warn");
+    pushLog("Print cycle reset — viewport & deposition cleared", "warn");
   }, [pushLog, syncJob]);
+
+  const stepLayerBack = useCallback(() => {
+    setLayer((prev) => {
+      const next = Math.max(0, prev - 1);
+      void syncJob(printing ? "start" : "pause", next);
+      pushLog(`Layer rewind → L${next}/${app.layers}`, "info");
+      return next;
+    });
+  }, [app.layers, printing, pushLog, syncJob]);
+
+  const stepLayerForward = useCallback(() => {
+    setLayer((prev) => {
+      const next = Math.min(app.layers, prev + 1);
+      if (next >= app.layers) {
+        setPrinting(false);
+        setStageId("maturation");
+        pushLog(`Construct complete — ${app.layers} layers`, "ok");
+      } else {
+        pushLog(`Layer advance → L${next}/${app.layers}`, "info");
+      }
+      void syncJob(printing ? "start" : "pause", next);
+      return next;
+    });
+  }, [app.layers, printing, pushLog, syncJob]);
 
   const startPrint = useCallback(() => {
     if (printing) return;
@@ -189,12 +241,6 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
 
   useEffect(() => {
     if (!printing) return;
-    const t = window.setInterval(() => setTick((n) => n + 1), 400);
-    return () => window.clearInterval(t);
-  }, [printing]);
-
-  useEffect(() => {
-    if (!printing) return;
 
     const layerTimer = window.setInterval(() => {
       setLayer((prev) => {
@@ -203,43 +249,31 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
           setPrinting(false);
           setStageId("maturation");
           pushLog(`Construct complete — ${app.layers} layers, routing to maturation`, "ok");
+          void syncJob("pause", app.layers);
           return app.layers;
         }
         if (next % 4 === 0) {
           pushLog(`Layer ${next} crosslinked · viability within band`, "info");
-          void syncJob("start", next);
         }
+        void syncJob("start", next);
         return next;
       });
     }, 420);
 
-    const headTimer = window.setInterval(() => {
-      setHeadX((x) => {
-        const dir = x > 85 ? -1 : x < 15 ? 1 : Math.random() > 0.5 ? 1 : -1;
-        return Math.min(92, Math.max(8, x + dir * (8 + Math.random() * 12)));
-      });
-      setHeadY((y) => {
-        const dir = y > 80 ? -1 : y < 20 ? 1 : Math.random() > 0.5 ? 1 : -1;
-        return Math.min(88, Math.max(12, y + dir * (6 + Math.random() * 10)));
-      });
-    }, 180);
+    return () => window.clearInterval(layerTimer);
+  }, [printing, app.layers, pushLog, syncJob]);
 
-    return () => {
-      window.clearInterval(layerTimer);
-      window.clearInterval(headTimer);
-    };
-  }, [printing, app.layers, app.name, pushLog, syncJob]);
+  const deposition: DepositionState = useMemo(
+    () =>
+      bodyModel?.deposition ?? {
+        currentLayer: layer,
+        totalLayers: app.layers,
+        progress: app.layers > 0 ? layer / app.layers : 0,
+        status: printing ? "printing" : layer >= app.layers ? "complete" : "idle",
+      },
+    [bodyModel, layer, app.layers, printing]
+  );
 
-  const viability = useMemo(() => {
-    const progress = app.layers > 0 ? layer / app.layers : 0;
-    const base = 88 + progress * (app.viabilityTarget - 88);
-    const jitter = printing ? Math.sin(tick * 0.7) * 0.4 : 0;
-    if (layer === 0 && !printing) return "91.2";
-    return (printing ? base + jitter : app.viabilityTarget - 0.3).toFixed(1);
-  }, [app, layer, printing, tick]);
-
-  const flowRate = printing ? (11.5 + Math.sin(layer) * 0.8).toFixed(1) : "0.0";
-  const integrity = layer > 0 ? Math.min(99.2, 92 + (layer / app.layers) * 7).toFixed(1) : "—";
   const stage = BIOPRINT_PIPELINE.find((s) => s.id === stageId) ?? BIOPRINT_PIPELINE[2];
 
   const kpiStats = liveData?.live
@@ -301,19 +335,21 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
 
       {/* Unified workspace — 3D + controls together, no scroll between them */}
       <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-lg">
-        <div className="border-b border-stone-100 bg-[#eef6f2] px-4 py-3 md:px-5">
+        <div className="border-b border-stone-100 bg-gradient-to-r from-[#eef6f2] via-white to-[#eef6f2] px-4 py-3 md:px-5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-teal-800">
-            Bioprint lab · anatomy review
+            Bioprint lab · unified workspace
           </p>
           <p className="mt-1 text-xs leading-relaxed text-stone-600 md:text-sm">
-            Living cells deposited layer-by-layer — inspect the 3D construct while controlling deposition from the panel beside it.
+            3D construct in center · operator console on right · rotate, zoom, step layers, and trace
+            live API telemetry from <code className="text-[10px] text-teal-700">/api/innovation/body-model</code>
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-stretch">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-stretch">
           {/* 3D viewport — primary, visible first on mobile */}
           <div className="order-1 min-h-[420px] lg:min-h-[540px]">
             <Bioprint3DViewer
+              ref={viewerRef}
               applicationId={appId}
               totalLayers={app.layers}
               currentLayer={layer}
@@ -323,10 +359,29 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
             />
           </div>
 
-          {/* Operator panel — right on desktop, directly under 3D on mobile */}
-          <aside className="order-2 flex flex-col gap-3 border-t border-stone-200 bg-stone-50/80 p-4 lg:border-l lg:border-t-0">
+          {/* Operator panel — hospital-grade console */}
+          <aside className="order-2 flex flex-col gap-3 border-t border-stone-800/20 bg-[#0c1513] p-4 lg:border-l lg:border-t-0">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-teal-400/90">
+                Operator console
+              </p>
+              <span
+                className={`rounded px-2 py-0.5 text-[8px] font-bold uppercase ${
+                  constructQuality === "clinical-grade"
+                    ? "bg-emerald-500/20 text-emerald-300"
+                    : constructQuality === "acceptable"
+                      ? "bg-teal-500/20 text-teal-300"
+                      : constructQuality === "forming"
+                        ? "bg-amber-500/20 text-amber-300"
+                        : "bg-white/10 text-stone-400"
+                }`}
+              >
+                {constructQuality.replace("-", " ")}
+              </span>
+            </div>
+
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-500">Tissue</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-teal-300/50">Tissue profile</p>
               <div className="mt-1.5 grid grid-cols-2 gap-1 lg:grid-cols-1">
                 {BIOPRINT_APPLICATIONS.map((a) => (
                   <button
@@ -339,8 +394,8 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
                     }}
                     className={`rounded-md border px-2 py-1.5 text-left text-xs transition ${
                       appId === a.id
-                        ? "border-teal-600 bg-teal-50 font-semibold text-teal-900"
-                        : "border-stone-200 bg-white text-stone-700 hover:bg-stone-100"
+                        ? "border-teal-500/50 bg-teal-950/80 font-semibold text-teal-100"
+                        : "border-white/10 bg-white/5 text-stone-300 hover:bg-white/10"
                     }`}
                   >
                     {a.name.split(" ")[0]}
@@ -352,56 +407,90 @@ export function BioprintLabStudio({ compact = false }: { compact?: boolean }) {
             <div className="flex gap-2">
               <Button
                 size="sm"
-                className="flex-1 bg-teal-900 text-white hover:bg-teal-800"
+                className="flex-1 bg-teal-600 text-white hover:bg-teal-500"
                 onClick={printing ? pausePrint : playOrResume}
               >
                 {printing ? <Pause className="mr-1 h-3.5 w-3.5" /> : <Play className="mr-1 h-3.5 w-3.5" />}
                 {printing ? "Pause" : layer > 0 && layer < app.layers ? "Resume" : "Start"}
               </Button>
-              <Button size="sm" variant="outline" onClick={reset}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-white/15 bg-white/5 text-stone-200 hover:bg-white/10"
+                onClick={reset}
+              >
                 <RotateCcw className="mr-1 h-3.5 w-3.5" /> Reset
               </Button>
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5">
-              <MetricTile label="Viability" value={viability} unit="%" icon={Activity} accent="text-emerald-600" />
-              <MetricTile label="Flow" value={flowRate} unit="µL/s" icon={Beaker} />
-              <MetricTile label="Integrity" value={integrity} unit="%" icon={Layers} />
-              <MetricTile label="Nozzle" value={printing ? "37.2" : "—"} unit="°C" icon={Thermometer} />
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 border-white/15 bg-white/5 text-stone-200 hover:bg-white/10"
+                onClick={stepLayerBack}
+                disabled={layer <= 0}
+              >
+                <ChevronLeft className="mr-1 h-3.5 w-3.5" /> Layer back
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 border-white/15 bg-white/5 text-stone-200 hover:bg-white/10"
+                onClick={stepLayerForward}
+                disabled={layer >= app.layers}
+              >
+                Layer fwd <ChevronRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
             </div>
 
-            <div className="min-h-0 flex-1 rounded-md border border-stone-200 bg-white p-2">
-              <p className="mb-1 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-teal-800">
-                <Cpu className="h-3 w-3" /> Log
+            <BioprintEnterpriseTelemetry
+              telemetry={{ ...telemetry, layer, totalLayers: app.layers }}
+              deposition={deposition}
+              jobId={jobId}
+              apiLive={Boolean(liveData?.live)}
+            />
+
+            {bodyModel?.printResults && bodyModel.printResults.depositedVolumeUl > 0 && (
+              <div className="rounded-lg border border-teal-800/30 bg-teal-950/40 px-2.5 py-2 text-[10px] text-teal-200/80">
+                <span className="font-semibold text-teal-300">API print result · </span>
+                {bodyModel.printResults.depositedVolumeUl} µL deposited · crosslink{" "}
+                {bodyModel.printResults.crosslinkPct?.toFixed(1) ?? "—"}% · {bodyModel.region.label}
+              </div>
+            )}
+
+            <div className="min-h-0 flex-1 rounded-md border border-white/10 bg-black/30 p-2">
+              <p className="mb-1 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-teal-400/80">
+                <Cpu className="h-3 w-3" /> Event log
               </p>
-              <div className="max-h-[88px] space-y-0.5 overflow-y-auto font-mono text-[9px] lg:max-h-[120px]">
-                {logs.length === 0 && <p className="text-stone-400">Start bioprint…</p>}
+              <div className="max-h-[72px] space-y-0.5 overflow-y-auto font-mono text-[9px] lg:max-h-[96px]">
+                {logs.length === 0 && <p className="text-stone-500">Start bioprint…</p>}
                 {logs.map((entry) => (
                   <div
                     key={entry.id}
                     className={
                       entry.level === "ok"
-                        ? "text-emerald-700"
+                        ? "text-emerald-400"
                         : entry.level === "warn"
-                          ? "text-amber-700"
-                          : "text-stone-600"
+                          ? "text-amber-400"
+                          : "text-stone-400"
                     }
                   >
-                    <span className="text-stone-400">{entry.time}</span> {entry.message}
+                    <span className="text-stone-600">{entry.time}</span> {entry.message}
                   </div>
                 ))}
               </div>
             </div>
 
             <p className="text-[10px] leading-snug text-stone-500">
-              <strong className="text-stone-700">{app.name}</strong> — {app.tissue}
+              <strong className="text-stone-300">{app.name}</strong> — {app.tissue}
               {liveData?.organResearch && appId === "brain" && (
-                <span className="mt-1 block text-teal-700">
+                <span className="mt-1 block text-teal-400">
                   PubMed: {liveData.organResearch.brain.pubMedArticles.toLocaleString()} articles
                 </span>
               )}
               {liveData?.organResearch && appId === "kidney" && (
-                <span className="mt-1 block text-teal-700">
+                <span className="mt-1 block text-teal-400">
                   PubMed: {liveData.organResearch.kidney.pubMedArticles.toLocaleString()} articles
                 </span>
               )}

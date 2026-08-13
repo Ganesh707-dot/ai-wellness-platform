@@ -10,7 +10,7 @@ import {
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Bounds, Center, ContactShadows, OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { Spherical, Vector3 } from "three";
+import { Spherical, Vector3, type PerspectiveCamera } from "three";
 import type { Group, Mesh } from "three";
 import type { AnatomyRegion } from "@/lib/bioprint-anatomy";
 
@@ -46,14 +46,33 @@ function useIsMobile() {
   return mobile;
 }
 
+/** Programmatic orbit/zoom — syncs OrbitControls internal state so damping does not snap back. */
 function orbitStep(controls: OrbitControlsImpl, deltaAzimuth: number, zoomMult = 1) {
-  const { camera, target } = controls;
+  const { object: camera, target } = controls;
   const offset = new Vector3().subVectors(camera.position, target);
   const spherical = new Spherical().setFromVector3(offset);
   spherical.theta += deltaAzimuth;
-  if (zoomMult !== 1) spherical.radius *= zoomMult;
+  if (zoomMult !== 1) {
+    spherical.radius = Math.max(
+      controls.minDistance,
+      Math.min(controls.maxDistance, spherical.radius * zoomMult)
+    );
+  }
   offset.setFromSpherical(spherical);
   camera.position.copy(target).add(offset);
+  camera.lookAt(target);
+  controls.update();
+}
+
+function restoreCamera(
+  controls: OrbitControlsImpl,
+  cameraConfig: AnatomyRegion["camera"],
+  camera: PerspectiveCamera
+) {
+  camera.position.set(...cameraConfig.position);
+  camera.fov = cameraConfig.fov;
+  camera.updateProjectionMatrix();
+  controls.target.set(...cameraConfig.target);
   controls.update();
 }
 
@@ -465,8 +484,7 @@ function Scene({
         minPolarAngle={0.2}
         maxPolarAngle={Math.PI - 0.2}
         target={cam.target}
-        enableDamping
-        dampingFactor={0.08}
+        enableDamping={false}
         autoRotate={autoRotate && printing}
         autoRotateSpeed={1.1}
       />
@@ -527,13 +545,12 @@ export function BioprintHumanScene({
 
   const makeHandle = useCallback((): BioprintViewerHandle => ({
     resetView() {
-      const b = boundsRef.current as { refresh?: () => { clip: () => { fit: () => void } } } | null;
-      b?.refresh?.().clip?.().fit?.();
       const controls = controlsRef.current;
       if (controls) {
-        controls.target.set(...region.camera.target);
-        controls.update();
+        restoreCamera(controls, region.camera, controls.object as PerspectiveCamera);
       }
+      const b = boundsRef.current as { refresh?: () => { clip: () => { fit: () => void } } } | null;
+      requestAnimationFrame(() => b?.refresh?.().clip?.().fit?.());
     },
     rotateLeft() {
       const controls = controlsRef.current;
@@ -551,13 +568,22 @@ export function BioprintHumanScene({
       const controls = controlsRef.current;
       if (controls) orbitStep(controls, 0, 1 / ZOOM_FACTOR);
     },
-  }), [region.camera.target]);
+  }), [region.camera]);
 
   useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      onControlsReady?.(makeHandle());
-    });
-    return () => cancelAnimationFrame(id);
+    let cancelled = false;
+    const register = () => {
+      if (cancelled) return;
+      if (controlsRef.current) {
+        onControlsReady?.(makeHandle());
+      } else {
+        requestAnimationFrame(register);
+      }
+    };
+    register();
+    return () => {
+      cancelled = true;
+    };
   }, [makeHandle, onControlsReady, region.id, width, height]);
 
   return (
